@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#173428">
+<meta name="theme-color" content="#FCFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -17,22 +17,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --page:#173428; --onpage:#FCFFFF; --onpage-muted:#A9C4B6; --onpage-line:#3C6454; --onpage-soft:#22493A;
-  --bg:#F0FFF7; --surface:#FCFFFF; --ink:#173428; --muted:#587066; --line:#D6E3DC;
-  --blue:#457763; --leaf:#457763; --gold:#E8C28F; --soft:#E6F1EB; --shadow:0 1px 2px rgba(5,20,14,.18),0 10px 28px rgba(5,20,14,.18);
+  --page:#FCFFFF; --onpage:#173428; --onpage-muted:#5A7368; --onpage-line:#C5D6CD; --onpage-soft:#EAF3EE;
+  --bg:#FCFFFF; --surface:#173428; --ink:#FCFFFF; --muted:#A9C4B6; --line:#2F5646; --soft:#22493A;
+  --blue:#E8C28F; --leaf:#7FB39A; --gold:#E8C28F; --focus:#457763; --shadow:0 2px 6px rgba(23,52,40,.10),0 12px 28px rgba(23,52,40,.12);
   --display:"Figtree",ui-sans-serif,system-ui,sans-serif;
   --serif:"Cormorant Garamond","Cormorant",Georgia,serif;
   --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --page:#0F2419; --bg:#132C21; --surface:#1B3A2C; --ink:#EAF5EF; --muted:#9DB8AB; --line:#2E5243; --soft:#244536; --blue:#8CC2A8; --leaf:#6FAE90; --shadow:none;}}
-:root[data-theme="dark"]{--page:#0F2419; --bg:#132C21; --surface:#1B3A2C; --ink:#EAF5EF; --muted:#9DB8AB; --line:#2E5243; --soft:#244536; --blue:#8CC2A8; --leaf:#6FAE90; --shadow:none;}
+  --page:#0F2419; --onpage:#EAF5EF; --onpage-muted:#9DB8AB; --onpage-line:#2E5243; --onpage-soft:#1B3A2C;
+  --bg:#0F2419; --surface:#1B3A2C; --ink:#EAF5EF; --muted:#9DB8AB; --line:#2E5243; --soft:#244536; --focus:#8CC2A8; --shadow:none;}}
+:root[data-theme="dark"]{--page:#0F2419; --onpage:#EAF5EF; --onpage-muted:#9DB8AB; --onpage-line:#2E5243; --onpage-soft:#1B3A2C;
+  --bg:#0F2419; --surface:#1B3A2C; --ink:#EAF5EF; --muted:#9DB8AB; --line:#2E5243; --soft:#244536; --focus:#8CC2A8; --shadow:none;}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--page);color:var(--ink);font:400 15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 60px}
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
 .brand{font:600 26px/1 var(--serif);letter-spacing:.22em;color:var(--onpage)}
@@ -93,7 +95,7 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .tile .prog i{display:block;height:100%;border-radius:9px;background:currentColor;opacity:.7}
 .tile.none{background:transparent;border:1.5px dashed var(--onpage-line);color:var(--onpage-muted)}
 .tile.none .prog{background:var(--onpage-line)}
-.group-label{grid-column:1/-1;font-size:13px;color:var(--gold);font-weight:600;margin:10px 0 0}
+.group-label{grid-column:1/-1;font-size:13px;color:var(--focus);font-weight:600;margin:10px 0 0}
 
 /* Drawer */
 .scrim{position:fixed;inset:0;background:rgba(10,15,30,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
@@ -102,7 +104,8 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .drawer.on{transform:none}
 @media (prefers-reduced-motion:reduce){.drawer,.scrim,.tile{transition:none}}
 .d-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
-.d-top h2{font:600 38px/1 var(--serif);letter-spacing:.01em}
+.d-top h2{font:600 38px/1 var(--serif);letter-spacing:.01em;color:var(--onpage)}
+.d-top .chip{background:var(--onpage-soft);color:var(--onpage)}
 .chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--ink);margin:2px 4px 2px 0}
 .close{border:0;background:var(--surface);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;box-shadow:var(--shadow);flex:none}
 .cycle{margin:6px 0 2px}
@@ -117,7 +120,7 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .card .note{font-size:13px;color:var(--muted);margin:6px 0 0}
 .steps{display:flex;gap:6px;margin-top:6px}
 .steps span{flex:1;height:30px;border-radius:8px;background:var(--soft);display:grid;place-items:center;font-size:11.5px;font-weight:600;color:var(--muted)}
-.steps span.done{background:var(--leaf);color:#fff}
+.steps span.done{background:var(--leaf);color:#173428}
 .beds{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
 .bed{border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border-radius:6px;background:var(--soft);min-width:26px}
 .bed small{font-size:9.5px;color:var(--muted);line-height:1}
@@ -131,7 +134,7 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .list li:first-child{border-top:0;padding-top:0}
 .list .dt{color:var(--muted);font-size:12px;display:block}
 svg text{font-family:var(--body)}
-.prev{font-size:13px;color:var(--muted);margin:14px 0 0}
+.prev{font-size:13px;color:var(--onpage-muted);margin:14px 0 0}
 details.dq{margin-top:34px;font-size:13px;color:var(--onpage-muted)}
 details.dq summary{cursor:pointer;font-weight:600}
 details.dq ul{margin:8px 0 0;padding-left:18px}
@@ -458,38 +461,38 @@ function timeline(c,tw){
   for(let k=0;k<=span/7;k+=4){const xx=L+(k*7/span)*(W-L-R);s+=`<text x="${xx}" y="${H-4}" font-size="10" fill="var(--muted)" text-anchor="middle">${k}</text>`}
   const now=c.fin||todayStr;const nx=x(now);
   s+=`<line x1="${nx}" x2="${nx}" y1="10" y2="${H-16}" stroke="var(--blue)" stroke-dasharray="3 3"/><text x="${nx}" y="8" font-size="10" fill="var(--blue)" text-anchor="middle">${c.fin?"fin":"hoy"}</text>`;
-  if(c.prep)[c.prep.desinf,c.prep.app1,c.prep.app2].filter(Boolean).forEach(d=>{s+=`<rect x="${x(d)-4}" y="18" width="8" height="8" transform="rotate(45 ${x(d)} 22)" fill="var(--muted)"><meta name="theme-color" content="#173428">
+  if(c.prep)[c.prep.desinf,c.prep.app1,c.prep.app2].filter(Boolean).forEach(d=>{s+=`<rect x="${x(d)-4}" y="18" width="8" height="8" transform="rotate(45 ${x(d)} 22)" fill="var(--muted)"><meta name="theme-color" content="#FCFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>${fmt(d)}</title></rect>`});
-  c.abon.forEach(a=>{s+=`<circle cx="${x(a.fecha)}" cy="48" r="7" fill="var(--leaf)"><meta name="theme-color" content="#173428">
+  c.abon.forEach(a=>{s+=`<circle cx="${x(a.fecha)}" cy="48" r="7" fill="var(--leaf)"><meta name="theme-color" content="#FCFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>${a.num||""} abonada, ${fmt(a.fecha)}</title></circle><text x="${x(a.fecha)}" y="51.5" font-size="9" fill="#fff" text-anchor="middle" font-weight="600">${(a.num||"").replace(/\D/g,"")}</text>`});
-  c.fum.forEach(f=>{const xx=x(f.fecha);s+=`<path d="M${xx} 67 L${xx+6} 79 L${xx-6} 79 Z" fill="#C98A2E"><meta name="theme-color" content="#173428">
+<title>${a.num||""} abonada, ${fmt(a.fecha)}</title></circle><text x="${x(a.fecha)}" y="51.5" font-size="9" fill="#173428" text-anchor="middle" font-weight="700">${(a.num||"").replace(/\D/g,"")}</text>`});
+  c.fum.forEach(f=>{const xx=x(f.fecha);s+=`<path d="M${xx} 67 L${xx+6} 79 L${xx-6} 79 Z" fill="#C98A2E"><meta name="theme-color" content="#FCFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>${fmt(f.fecha)}: ${esc(f.plagas||"")}</title></path>`});
-  c.monDates.forEach(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));s+=`<rect x="${x(d)-5}" y="95" width="10" height="10" rx="2" fill="${col(st.rate).bg}" stroke="var(--line)"><meta name="theme-color" content="#173428">
+  c.monDates.forEach(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));s+=`<rect x="${x(d)-5}" y="95" width="10" height="10" rx="2" fill="${col(st.rate).bg}" stroke="var(--line)"><meta name="theme-color" content="#FCFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
