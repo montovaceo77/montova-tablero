@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1C2640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Montova · Tablero de cultivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F6; --surface:#FFFFFF; --ink:#1C2640; --muted:#5E6A85; --line:#D8DEE9;
+  --blue:#4966AE; --leaf:#3F8061; --soft:#E4E9F3; --shadow:0 1px 2px rgba(28,38,64,.06),0 8px 24px rgba(28,38,64,.06);
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121827; --surface:#1B2336; --ink:#E8ECF5; --muted:#9AA6C0; --line:#2C364D; --blue:#8FA8E6; --leaf:#78C29C; --soft:#242E45; --shadow:none;}}
+:root[data-theme="dark"]{--bg:#121827; --surface:#1B2336; --ink:#E8ECF5; --muted:#9AA6C0; --line:#2C364D; --blue:#8FA8E6; --leaf:#78C29C; --soft:#242E45; --shadow:none;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 60px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.brand{font:700 20px/1 var(--display);letter-spacing:-.01em}
+.brand small{display:block;font:500 13px/1.4 var(--body);color:var(--muted);margin-top:4px;letter-spacing:0}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--soft);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+select{font:500 13px var(--body);color:var(--ink);background:var(--soft);border:0;border-radius:999px;padding:8px 12px}
+
+/* Resumen */
+.summary{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-bottom:18px}
+.panel{background:var(--surface);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.headline{font:500 clamp(24px,3.4vw,38px)/1.15 var(--display);letter-spacing:-.02em;margin:4px 0 14px;max-width:22ch}
+.headline b{font-weight:700}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.meter{height:12px;border-radius:999px;background:var(--soft);overflow:hidden;margin:18px 0 8px;display:flex}
+.meter i{display:block;height:100%}
+.meter-legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.fact b{display:block;font:700 22px/1.1 var(--display)}
+.fact span{font-size:12px;color:var(--muted)}
+h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
+.panel p.hint{margin:0 0 14px;color:var(--muted);font-size:13px}
+.pests{display:flex;flex-direction:column;gap:6px}
+.pest{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:10px;border:0;background:transparent;padding:5px 6px;margin:0 -6px;border-radius:10px;cursor:pointer;text-align:left}
+.pest:hover{background:var(--soft)}
+.pest[aria-pressed="true"]{background:var(--soft)}
+.pest .nm{font-size:14px;font-weight:500}
+.pest .bar{height:8px;border-radius:999px;background:var(--soft);overflow:hidden}
+.pest[aria-pressed="true"] .bar{background:var(--surface)}
+.pest .bar i{display:block;height:100%;border-radius:999px;background:var(--blue)}
+.pest .v{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.more{border:0;background:none;color:var(--blue);font-size:13px;font-weight:600;padding:6px 0 0;cursor:pointer}
+
+.insights{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px}
+.insight{background:var(--surface);border-radius:18px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--c,var(--blue))}
+.insight h3{font:600 15px/1.3 var(--body);margin:0 0 6px}
+.insight p{margin:0;color:var(--muted);font-size:13.5px}
+
+/* Mapa */
+.map-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.map-head .t{font:700 26px/1.1 var(--display);letter-spacing:-.02em;margin:0}
+.map-head p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.legend .ramp{width:120px;height:8px;border-radius:999px}
+.lens{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border-radius:999px;padding:5px 6px 5px 12px;font-size:13px;box-shadow:var(--shadow)}
+.lens[hidden]{display:none}
+.lens button{border:0;background:var(--soft);border-radius:999px;padding:3px 9px;cursor:pointer;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.tile{position:relative;border:0;border-radius:14px;padding:12px 12px 14px;min-height:108px;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease}
+.tile:hover{transform:translateY(-2px)}
+.tile .n{font:700 26px/1 var(--display);letter-spacing:-.02em}
+.tile .n small{font:500 11px var(--body);opacity:.75;margin-left:4px;letter-spacing:0}
+.tile .p{font:600 15px/1 var(--body);font-variant-numeric:tabular-nums}
+.tile .w{font-size:11.5px;opacity:.8}
+.tile .prog{position:absolute;left:12px;right:12px;bottom:7px;height:3px;border-radius:9px;background:rgba(255,255,255,.35)}
+.tile .prog i{display:block;height:100%;border-radius:9px;background:currentColor;opacity:.7}
+.tile.none{background:transparent;border:1.5px dashed var(--line);color:var(--muted)}
+.tile.none .prog{background:var(--line)}
+.group-label{grid-column:1/-1;font-size:13px;color:var(--muted);font-weight:600;margin:10px 0 0}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,15,30,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,100%);background:var(--bg);z-index:11;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 18px) 20px calc(env(safe-area-inset-bottom,0px) + 30px)}
+.drawer.on{transform:none}
+@media (prefers-reduced-motion:reduce){.drawer,.scrim,.tile{transition:none}}
+.d-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.d-top h2{font-size:32px;letter-spacing:-.02em}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--ink);margin:2px 4px 2px 0}
+.close{border:0;background:var(--surface);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;box-shadow:var(--shadow);flex:none}
+.cycle{margin:6px 0 2px}
+.cycle .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.cycle .track{height:10px;border-radius:999px;background:var(--soft);margin:6px 0;overflow:hidden}
+.cycle .track i{display:block;height:100%;background:var(--leaf);border-radius:999px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.card{background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.card.wide{grid-column:1/-1}
+.card h4{font:600 13px/1.2 var(--body);color:var(--muted);margin:0 0 8px}
+.big{font:700 28px/1 var(--display);letter-spacing:-.02em}
+.card .note{font-size:13px;color:var(--muted);margin:6px 0 0}
+.steps{display:flex;gap:6px;margin-top:6px}
+.steps span{flex:1;height:30px;border-radius:8px;background:var(--soft);display:grid;place-items:center;font-size:11.5px;font-weight:600;color:var(--muted)}
+.steps span.done{background:var(--leaf);color:#fff}
+.beds{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.bed{border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border-radius:6px;background:var(--soft);min-width:26px}
+.bed small{font-size:9.5px;color:var(--muted);line-height:1}
+.bed .dots{display:flex;gap:2px}
+.bed .dots i{width:6px;height:6px;border-radius:50%}
+.key{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.key i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.empty{font-size:13.5px;color:var(--muted);background:var(--soft);border-radius:12px;padding:12px 14px;margin:0}
+.list{margin:0;padding:0;list-style:none;font-size:13.5px}
+.list li{padding:8px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0;padding-top:0}
+.list .dt{color:var(--muted);font-size:12px;display:block}
+svg text{font-family:var(--body)}
+.prev{font-size:13px;color:var(--muted);margin:14px 0 0}
+details.dq{margin-top:34px;font-size:13px;color:var(--muted)}
+details.dq summary{cursor:pointer;font-weight:600}
+details.dq ul{margin:8px 0 0;padding-left:18px}
+
+@media (max-width:860px){
+  .summary{grid-template-columns:1fr}
+  .insights{grid-template-columns:1fr}
+  .facts{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:520px){
+  .wrap{padding:16px 14px 50px}
+  .grid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .tile{min-height:96px;padding:10px 9px 13px}
+  .tile .n{font-size:22px}
+  .dgrid{grid-template-columns:1fr}
+  .drawer{padding-left:14px;padding-right:14px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Montova<small id="subtitle"></small></div>
+    <div class="controls">
+      <select id="finca" aria-label="Finca"></select>
+      <div class="seg" id="varSeg" role="group" aria-label="Variedad"></div>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="panel" id="global"></div>
+    <div class="panel">
+      <h2>Qué se está encontrando</h2>
+      <p class="hint">Porcentaje de puntos inspeccionados con cada problema. Toca uno para verlo en el mapa de lotes.</p>
+      <div class="pests" id="pests"></div>
+    </div>
+  </section>
+
+  <section class="insights" id="insights"></section>
+
+  <section>
+    <div class="map-head">
+      <div>
+        <h2 class="t">Lotes</h2>
+        <p id="mapSub"></p>
+      </div>
+      <div class="controls">
+        <span class="lens" id="lens" hidden></span>
+        <div class="seg" id="sortSeg" role="group" aria-label="Ordenar">
+          <button data-s="ciclo" aria-pressed="true">Por ciclo</button>
+          <button data-s="inc" aria-pressed="false">Por incidencia</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend" style="margin-bottom:12px"><span>0%</span><span class="ramp" id="ramp"></span><span>100% de puntos afectados</span></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <details class="dq" id="dq"></details>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle"></aside>
+
+<script>
+/* Para conectar en vivo (fuera de claude.ai, p. ej. GitHub Pages): pon aquí la URL del doGet de Apps Script
+   que devuelva este mismo formato JSON. Si queda vacía, se usan los datos incluidos. */
+const SOURCE_URL = "https://script.google.com/macros/s/AKfycbzSwcaE7Ub0WUaKTNZZ8ZGf-tgdpu6wNEzCXjnzf9R4MX4jhHVCTgrhpjsI_A-S0sAT/exec"; // ← pega aquí la URL de Apps Script (termina en /exec)
+const SNAPSHOT = null;
+const SNAPSHOT_DATE = "";
+
+const MES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const D=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const fmt=s=>{if(!s)return "—";const d=D(s);return d.getDate()+" "+MES[d.getMonth()]+" "+d.getFullYear()};
+const fmtS=s=>{const d=D(s);return d.getDate()+" "+MES[d.getMonth()]};
+const pct=v=>Math.round(v*100)+"%";
+const num=v=>v==null?"—":v.toLocaleString("es-CO");
+const days=(a,b)=>Math.round((D(b)-D(a))/864e5);
+const todayStr=(()=>{const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")})();
+function isoWeek(s){const d=D(s);const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return {y:t.getUTCFullYear(),w:Math.ceil(((t-y)/864e5+1)/7)}}
+const wkKey=s=>{const k=isoWeek(s);return k.y+"-"+String(k.w).padStart(2,"0")};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const lotNum=l=>l.replace(/^lote\s*/i,"");
+
+let DATA_AT="", RAW, M, state={finca:null,variedad:"Todas",sort:"ciclo",lens:null};
+
+function parsePoint(v){
+  if(!v||/sano/i.test(v))return [];
+  return [...new Set(v.split(",").map(x=>x.replace(/\(.*?\)/g,"").trim()).filter(Boolean))];
+}
+
+function build(raw){
+  const cycles=raw.lotes.map((l,i)=>({...l,id:i,mon:[],abon:[],fum:[],sala:[],prep:null}));
+  const byLot={};
+  cycles.forEach(c=>{(byLot[c.finca+"|"+c.lote]??=[]).push(c)});
+  Object.values(byLot).forEach(a=>a.sort((x,y)=>x.inicio<y.inicio?-1:1));
+  const orphans={};
+  function find(finca,lote,fecha){
+    const a=byLot[finca+"|"+lote];if(!a)return null;
+    let best=null;for(const c of a){if(c.inicio<=fecha)best=c}
+    return best||a[0];
+  }
+  const orphan=(what,finca,lote)=>{const k=finca+"|"+lote;(orphans[k]??={finca,lote,what:new Set()}).what.add(what)};
+  raw.prep.forEach(p=>{const c=cycles.find(c=>c.finca===p.finca&&c.lote===p.lote&&c.inicio===p.inicio)||find(p.finca,p.lote,p.inicio||"9999");if(c)c.prep=p});
+  // monitoreo: una fila por cama y fecha (la última registrada)
+  const last={};let repeated=0;
+  raw.monitoreo.forEach(r=>{const k=r[1]+"|"+r[2]+"|"+r[3]+"|"+r[4];if(last[k]){repeated++;if(Number(r[0])>Number(last[k][0]))last[k]=r}else last[k]=r});
+  Object.values(last).forEach(r=>{
+    const [id,fecha,finca,lote,cama,p1,p2,p3]=r;const c=find(finca,lote,fecha);
+    const pts=[p1,p2,p3].map(parsePoint);
+    if(c)c.mon.push({fecha,cama,pts});else orphan("monitoreo",finca,lote);
+  });
+  raw.labores.forEach(r=>{const c=find(r.finca,r.lote,r.fecha);if(c&&/abon/i.test(r.labor||""))c.abon.push(r);else if(!c)orphan("abonadas",r.finca,r.lote)});
+  raw.fumigacion.forEach(r=>{
+    (r.lotes||"").split(",").map(s=>s.trim()).filter(Boolean).forEach(l=>{
+      const lote=/^lote/i.test(l)?l:"Lote "+l;const c=find(r.finca,lote,r.fecha);
+      const plagas=(r.plagas||"").split(",").map(s=>s.trim()).filter(Boolean);
+      if(c)c.fum.push({...r,plagasL:plagas});else orphan("fumigación",r.finca,lote);
+    });
+  });
+  (raw.ingreso||[]).forEach(r=>{const c=find(r.finca,r.lote,r.fecha);if(c)c.sala.push(r);else orphan("ingreso a sala",r.finca,r.lote)});
+  cycles.forEach(c=>{
+    const dates=[...new Set(c.mon.map(m=>m.fecha))].sort();
+    c.monDates=dates;
+    c.lastMon=dates.at(-1)||null;
+    c.cur=c.lastMon?c.mon.filter(m=>m.fecha===c.lastMon):[];
+    c.inc=stats(c.cur);
+    c.abon.sort((a,b)=>a.fecha<b.fecha?-1:1);c.fum.sort((a,b)=>a.fecha<b.fecha?-1:1);
+    const ref=c.fin||todayStr;c.weeks=Math.max(0,Math.floor(days(c.inicio,ref)/7));
+    c.active=!/inactiv/i.test(c.estado||"");
+  });
+  const finished=cycles.filter(c=>!c.active&&c.fin);
+  const typical=finished.length?Math.round(finished.reduce((s,c)=>s+c.weeks,0)/finished.length):34;
+  const allMonDates=cycles.flatMap(c=>c.monDates);
+  return {cycles,orphans:Object.values(orphans),repeated,typical,hasMon:allMonDates.length>0};
+}
+
+function stats(rows){
+  let points=0,bad=0;const pest={};const beds=new Set();
+  rows.forEach(r=>{beds.add(r.cama);r.pts.forEach(p=>{points++;if(p.length)bad++;p.forEach(x=>pest[x]=(pest[x]||0)+1)})});
+  return {points,bad,rate:points?bad/points:null,pest,beds:beds.size};
+}
+
+/* Color: rampa de verde salvia a baya profunda */
+const RAMP_L=["#CFE5D6","#E8DDA4","#EBB184","#D86F74","#9B3358"];
+const RAMP_D=["#2D5C47","#6B6433","#8A5536","#94404F","#B8466F"];
+function isDark(){const a=document.documentElement.getAttribute("data-theme");if(a)return a==="dark";return matchMedia("(prefers-color-scheme: dark)").matches}
+function hex(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16))}
+function col(v){
+  const R=isDark()?RAMP_D:RAMP_L;const x=Math.max(0,Math.min(1,v))*(R.length-1);const i=Math.min(R.length-2,Math.floor(x)),t=x-i;
+  const a=hex(R[i]),b=hex(R[i+1]);const c=a.map((v,k)=>Math.round(v+(b[k]-v)*t));
+  const lum=(0.299*c[0]+0.587*c[1]+0.114*c[2])/255;
+  return {bg:`rgb(${c})`,fg:isDark()?"#F2F4FA":(lum<.55?"#FFFFFF":"#1C2640")};
+}
+
+function visible(){
+  return M.cycles.filter(c=>c.finca===state.finca&&(state.variedad==="Todas"||c.variedad===state.variedad));
+}
+
+/* Incidencia global de la semana: el último monitoreo de cada lote dentro de esa semana */
+function weekly(cs){
+  const weeks={};
+  cs.forEach(c=>{
+    const byW={};c.monDates.forEach(d=>{byW[wkKey(d)]=d});
+    Object.entries(byW).forEach(([w,d])=>{(weeks[w]??=[]).push(...c.mon.filter(m=>m.fecha===d).map(m=>({...m,cycle:c})))});
+  });
+  return Object.keys(weeks).sort().map(w=>({w,rows:weeks[w],s:stats(weeks[w]),lots:new Set(weeks[w].map(r=>r.cycle.id)).size}));
+}
+
+function render(){
+  const cs=visible();const active=cs.filter(c=>c.active);
+  const W=weekly(cs);const cur=W.at(-1);const prev=W.at(-2);
+  const wk=cur?isoWeek(cur.rows[0].fecha).w:null;
+  document.getElementById("subtitle").textContent=state.finca+(cur?`, semana ${wk}`:"")+`. Datos al ${DATA_AT}`;
+
+  // Panel global
+  const g=document.getElementById("global");
+  if(!cur){g.innerHTML=`<h2>Estado sanitario del cultivo</h2><p class="empty" style="margin-top:12px">Todavía no hay monitoreos registrados para esta selección.</p>`}
+  else{
+    const s=cur.s;const c=col(s.rate);
+    let trend="";
+    if(prev){const d=s.rate-prev.s.rate;trend=` ${d>0?"Sube":"Baja"} ${Math.abs(Math.round(d*100))} puntos frente a la semana anterior.`}
+    else trend=" La tendencia semanal aparece a partir del segundo monitoreo.";
+    const sala=cs.reduce((a,c)=>a+c.sala.filter(r=>wkKey(r.fecha)===cur.w).reduce((x,r)=>x+(+r.cantidad||0),0),0);const salaAny=cs.some(c=>c.sala.length);
+    const fumW=cs.reduce((a,c)=>a+c.fum.filter(f=>wkKey(f.fecha)===cur.w).length,0);
+    const abW=cs.reduce((a,c)=>a+c.abon.filter(f=>wkKey(f.fecha)===cur.w).length,0);
+    g.innerHTML=`<h2>Estado sanitario del cultivo, semana ${wk}</h2>
+      <p class="headline"><b>${pct(s.rate)}</b> de los puntos inspeccionados tienen alguna plaga o enfermedad</p>
+      <p class="sub">${num(s.points)} puntos en ${num(s.beds?cur.rows.length:0)} camas de ${cur.lots} lotes.${trend}</p>
+      <div class="meter" role="img" aria-label="${pct(s.rate)} afectados"><i style="width:${s.rate*100}%;background:${c.bg}"></i></div>
+      <div class="meter-legend"><span>Afectados ${num(s.bad)}</span><span>Sanos ${num(s.points-s.bad)}</span></div>
+      <div class="facts">
+        <div class="fact"><b>${active.length}</b><span>lotes en producción</span></div>
+        <div class="fact"><b>${cur.lots} de ${active.length}</b><span>lotes monitoreados</span></div>
+        <div class="fact"><b>${fumW} / ${abW}</b><span>fumigaciones / abonadas esta semana</span></div>
+        <div class="fact"><b>${salaAny?num(sala):"Sin datos"}</b><span>tallos a sala esta semana</span></div>
+      </div>`;
+  }
+
+  // Plagas
+  const P=document.getElementById("pests");
+  if(cur){
+    const arr=Object.entries(cur.s.pest).sort((a,b)=>b[1]-a[1]);const max=arr[0]?arr[0][1]/cur.s.points:1;
+    const show=P.dataset.all?arr:arr.slice(0,5);
+    P.innerHTML=show.map(([k,v])=>`<button class="pest" data-p="${esc(k)}" aria-pressed="${state.lens===k}"><span class="nm">${esc(k)}</span><span class="bar"><i style="width:${v/cur.s.points/max*100}%"></i></span><span class="v">${pct(v/cur.s.points)}</span></button>`).join("")+
+      (arr.length>5?`<button class="more" id="morePests">${P.dataset.all?"Ver menos":"Ver los "+arr.length+" problemas encontrados"}</button>`:"");
+    P.querySelectorAll(".pest").forEach(b=>b.onclick=()=>{state.lens=state.lens===b.dataset.p?null:b.dataset.p;render()});
+    const mb=document.getElementById("morePests");if(mb)mb.onclick=()=>{P.dataset.all=P.dataset.all?"":"1";render()};
+  }else P.innerHTML=`<p class="empty">Sin monitoreos todavía.</p>`;
+
+  // Hallazgos
+  const I=document.getElementById("insights");const ins=[];
+  if(cur){
+    const lots=active.filter(c=>c.lastMon&&wkKey(c.lastMon)===cur.w).sort((a,b)=>b.inc.rate-a.inc.rate);
+    const top=lots.filter(c=>c.inc.rate>=.8);
+    if(top.length) ins.push({c:col(.9).bg,h:`${top.length} ${top.length===1?"lote supera":"lotes superan"} el 80% de puntos afectados`,p:`${top.map(c=>lotNum(c.lote)).join(", ")}. Son los primeros para revisar en campo.`});
+    const main=Object.entries(cur.s.pest).sort((a,b)=>b[1]-a[1])[0];
+    if(main){const inLots=lots.filter(c=>c.inc.pest[main[0]]).length;
+      ins.push({c:"var(--blue)",h:`${main[0]} es el problema principal`,p:`Aparece en ${pct(main[1]/cur.s.points)} de los puntos y está presente en ${inLots} de ${lots.length} lotes monitoreados.`})}
+    const ref=cur.rows.map(r=>r.fecha).sort().at(-1);
+    const noFum=lots.filter(c=>c.inc.rate>=cur.s.rate&&!c.fum.some(f=>days(f.fecha,ref)<=15&&days(f.fecha,ref)>=-7));
+    if(noFum.length) ins.push({c:"#C98A2E",h:`${noFum.length} lotes sobre el promedio sin fumigación registrada`,p:`En los últimos 15 días no aparece aplicación en ${noFum.slice(0,8).map(c=>lotNum(c.lote)).join(", ")}${noFum.length>8?" y otros":""}.`});
+    else ins.push({c:"var(--leaf)",h:"Los lotes más afectados tienen fumigación reciente",p:"Todos los lotes sobre el promedio registran aplicación en los últimos 15 días."});
+    const noMon=active.filter(c=>!c.lastMon||wkKey(c.lastMon)!==cur.w);
+    if(ins.length<3&&noMon.length) ins.push({c:"var(--muted)",h:`${noMon.length} lotes sin monitoreo esta semana`,p:noMon.map(c=>lotNum(c.lote)).join(", ")});
+  }
+  I.innerHTML=ins.slice(0,3).map(x=>`<div class="insight" style="--c:${x.c}"><h3>${esc(x.h)}</h3><p>${esc(x.p)}</p></div>`).join("");
+
+  // Mapa
+  const lens=document.getElementById("lens");
+  if(state.lens){lens.hidden=false;lens.innerHTML=`Mostrando: ${esc(state.lens)} <button aria-label="Quitar filtro">Quitar</button>`;lens.querySelector("button").onclick=()=>{state.lens=null;render()}}
+  else lens.hidden=true;
+  document.getElementById("ramp").style.background=`linear-gradient(90deg,${(isDark()?RAMP_D:RAMP_L).join(",")})`;
+  const val=c=>{if(!c.inc.points)return null;return state.lens?(c.inc.pest[state.lens]||0)/c.inc.points:c.inc.rate};
+  let list=active.slice();
+  if(state.sort==="inc")list.sort((a,b)=>(val(b)??-1)-(val(a)??-1));
+  else list.sort((a,b)=>a.inicio<b.inicio?-1:1);
+  document.getElementById("mapSub").textContent=state.sort==="ciclo"?"Del más avanzado al más reciente en su ciclo. Toca un lote para ver su historia completa.":"De mayor a menor incidencia en su último monitoreo. Toca un lote para ver su historia completa.";
+  const tile=c=>{const v=val(c);const w=Math.min(1,c.weeks/M.typical);
+    if(v==null)return `<button class="tile none" data-id="${c.id}"><span class="n">${esc(lotNum(c.lote))}</span><span><span class="p" style="font-size:12px">Sin monitoreo</span><br><span class="w">Semana ${c.weeks}</span></span><span class="prog"><i style="width:${w*100}%"></i></span></button>`;
+    const k=col(v);return `<button class="tile" data-id="${c.id}" style="background:${k.bg};color:${k.fg}" aria-label="${esc(c.lote)}, ${pct(v)} afectado, semana ${c.weeks}"><span class="n">${esc(lotNum(c.lote))}</span><span><span class="p">${pct(v)}</span><br><span class="w">Semana ${c.weeks}</span></span><span class="prog"><i style="width:${w*100}%"></i></span></button>`};
+  const G=document.getElementById("grid");
+  if(state.variedad==="Todas"&&new Set(list.map(c=>c.variedad)).size>1&&state.sort==="ciclo"){
+    const vs=[...new Set(list.map(c=>c.variedad))];
+    G.innerHTML=vs.map(v=>`<div class="group-label">${esc(v)}</div>`+list.filter(c=>c.variedad===v).map(tile).join("")).join("");
+  }else G.innerHTML=list.map(tile).join("")||`<p class="empty" style="grid-column:1/-1">No hay lotes activos para esta selección.</p>`;
+  G.querySelectorAll(".tile").forEach(b=>b.onclick=()=>openLot(+b.dataset.id,b));
+
+  // Calidad de datos
+  const dq=[];const orph=M.orphans.filter(o=>o.finca===state.finca);
+  orph.forEach(o=>dq.push(`${o.lote} tiene registros de ${[...o.what].join(" y ")}, pero no está programado en Lotes.`));
+  if(M.repeated)dq.push(`${M.repeated} camas aparecen dos veces el mismo día en Monitoreo; se usa el último registro.`);
+  if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
+  const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
+  dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+}
+
+let lastFocus=null;
+function openLot(id,from){
+  lastFocus=from;const c=M.cycles[id];const dr=document.getElementById("drawer");
+  const prevCycles=M.cycles.filter(x=>x.finca===c.finca&&x.lote===c.lote&&x.id!==c.id&&x.inicio<c.inicio);
+  const pcol=v=>col(v);
+  const s=c.inc;
+  // Monitoreo
+  let monHTML;
+  if(!s.points)monHTML=`<p class="empty">Este lote aún no tiene monitoreo en su ciclo actual.</p>`;
+  else{
+    const pests=Object.entries(s.pest).sort((a,b)=>b[1]-a[1]);
+    const beds=c.cur.slice().sort((a,b)=>a.cama-b.cama);
+    const sano=isDark()?"#4E9A74":"#7DBB98",bad=col(.95).bg;
+    const hist=c.monDates.length>1?`<p class="note">Historial: ${c.monDates.map(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));return fmtS(d)+" "+pct(st.rate)}).join(", ")}</p>`:"";
+    monHTML=`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big">${pct(s.rate)}</span><span class="note" style="margin:0">de puntos afectados el ${fmt(c.lastMon)}</span></div>
+      <div class="meter" style="margin:10px 0 12px"><i style="width:${s.rate*100}%;background:${col(s.rate).bg}"></i></div>
+      ${pests.map(([k,v])=>`<span class="chip">${esc(k)} ${pct(v/s.points)}</span>`).join("")}
+      <p class="note">${s.beds} camas monitoreadas${c.camas?" de "+c.camas:""}, 3 puntos por cama.</p>
+      <div class="beds" aria-label="Mapa de camas">${beds.map(b=>`<button class="bed" data-d="${esc("Cama "+b.cama+": "+b.pts.map((p,i)=>"punto "+(i+1)+" "+(p.length?p.join(", "):"sano")).join("; "))}" title="Cama ${b.cama}: ${b.pts.map((p,i)=>"P"+(i+1)+" "+(p.length?p.join(", "):"sano")).join(" · ")}"><small>${b.cama}</small><span class="dots">${b.pts.map(p=>`<i style="background:${p.length?bad:sano}"></i>`).join("")}</span></button>`).join("")}</div>
+      <div class="key"><span><i style="background:${sano}"></i>Punto sano</span><span><i style="background:${bad}"></i>Punto afectado</span></div><p class="note" id="bedInfo">Toca una cama para ver qué se encontró en cada punto.</p>${hist}`;
+  }
+  // Fumigación
+  const plagasF={};c.fum.forEach(f=>f.plagasL.forEach(p=>plagasF[p]=(plagasF[p]||0)+1));
+  const fumHTML=c.fum.length?`<span class="big">${c.fum.length}</span><p class="note">Contra: ${Object.entries(plagasF).map(([k,v])=>`${esc(k)}${v>1?" ("+v+")":""}`).join(", ")}</p><ul class="list" style="margin-top:10px">${c.fum.map(f=>`<li><span class="dt">${fmt(f.fecha)}</span>${esc(f.productos||"")}${f.fert?" + "+esc(f.fert):""}</li>`).join("")}</ul>`:`<span class="big">0</span><p class="note">Sin fumigaciones registradas en este ciclo.</p>`;
+  // Abonadas
+  const names=["1era","2da","3era","4ta"];const extra=c.abon.filter(a=>!names.includes(a.num));
+  const abHTML=`<span class="big">${c.abon.length}</span><div class="steps">${names.map(n=>{const a=c.abon.find(x=>x.num===n);return `<span class="${a?"done":""}" title="${a?esc(fmt(a.fecha)+": "+(a.prod||"")):"Pendiente"}">${n}</span>`}).join("")}</div><p class="note">${c.abon.length?"Última: "+fmt(c.abon.at(-1).fecha)+(c.abon.at(-1).prod?", "+esc(c.abon.at(-1).prod):""):"Sin abonadas registradas todavía."}${extra.length?" Además "+extra.length+" registro(s) sin número.":""}</p>`;
+  // Sala
+  const salaT=c.sala.reduce((a,r)=>a+(+r.cantidad||0),0),desT=c.sala.reduce((a,r)=>a+(+r.descarte||0),0);
+  const porTipo={},motivos={};c.sala.forEach(r=>{if(r.tipo)porTipo[r.tipo]=(porTipo[r.tipo]||0)+(+r.cantidad||0);if(r.motivo&&+r.descarte)motivos[r.motivo]=(motivos[r.motivo]||0)+(+r.descarte||0)});
+  const salaHTML=c.sala.length?`<span class="big">${num(salaT)}</span><p class="note">tallos en ${c.sala.length} ingreso${c.sala.length>1?"s":""}, último el ${fmt(c.sala.at(-1).fecha)}</p>
+    <div style="margin-top:8px">${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}</div>
+    <p class="note">Descarte: <b style="color:var(--ink)">${num(desT)}</b>${salaT+desT?" ("+pct(desT/(salaT+desT))+")":""}${Object.keys(motivos).length?". Motivos: "+Object.entries(motivos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>esc(k)+" "+num(v)).join(", "):""}</p>`:`<p class="empty">Sin ingresos a sala registrados en este ciclo.</p>`;
+  // Preparación
+  const p=c.prep;
+  const prepHTML=p?`<ul class="list"><li><span class="dt">Picada</span>${fmt(p.picada)}</li><li><span class="dt">Desinfección</span>${fmt(p.desinf)}</li><li><span class="dt">Aplicación 1, ${fmt(p.app1)}</span>${esc(p.app1p||"—")}</li><li><span class="dt">Aplicación 2, ${fmt(p.app2)}</span>${esc(p.app2p||"—")}</li></ul>`:`<p class="empty">Sin registro de preparación de suelo.</p>`;
+
+  const w=c.weeks,tw=M.typical;
+  dr.innerHTML=`<div class="d-top"><div><h2 id="dTitle">${esc(c.lote)}</h2><span class="chip">${esc(c.variedad)}</span><span class="chip">${esc(c.finca)}</span>${c.active?"":`<span class="chip">Finalizado</span>`}</div><button class="close" aria-label="Cerrar">×</button></div>
+    <div class="card"><div class="cycle"><div class="row"><span>Programado el ${fmt(c.inicio)}</span><span><b style="color:var(--ink)">Semana ${w}</b> de ~${tw}</span></div><div class="track"><i style="width:${Math.min(100,w/tw*100)}%"></i></div><div class="row"><span>${num(c.camas)} camas, ${num(c.plantas)} plantas</span><span>${c.fin?"Finalizó "+fmt(c.fin):"Cierre estimado "+estEnd(c.inicio,tw)}</span></div></div>
+    ${timeline(c,tw)}</div>
+    <div class="dgrid">
+      <div class="card wide"><h4>Monitoreo</h4>${monHTML}</div>
+      <div class="card"><h4>Fumigaciones</h4>${fumHTML}</div>
+      <div class="card"><h4>Abonadas</h4>${abHTML}</div>
+      <div class="card"><h4>Ingreso a sala</h4>${salaHTML}</div>
+      <div class="card"><h4>Preparación de suelo</h4>${prepHTML}</div>
+    </div>
+    ${prevCycles.length?`<p class="prev">Ciclo anterior: ${prevCycles.map(x=>`${fmt(x.inicio)} a ${fmt(x.fin)}, ${x.weeks} semanas, ${x.abon.length} abonadas, ${x.fum.length} fumigaciones, ${x.sala.length?num(x.sala.reduce((a,r)=>a+(+r.cantidad||0),0))+" tallos a sala":"sin ingreso a sala registrado"}`).join("; ")}.</p>`:""}`;
+  dr.querySelector(".close").onclick=closeLot;
+  dr.querySelectorAll(".bed").forEach(b=>b.onclick=()=>{dr.querySelectorAll(".bed").forEach(x=>x.style.outline="");b.style.outline="2px solid var(--blue)";dr.querySelector("#bedInfo").textContent=b.dataset.d});
+  document.getElementById("scrim").classList.add("on");dr.classList.add("on");dr.scrollTop=0;
+  setTimeout(()=>dr.querySelector(".close").focus(),50);
+}
+function estEnd(ini,tw){const d=D(ini);d.setDate(d.getDate()+tw*7);return d.getDate()+" "+MES[d.getMonth()]+" "+d.getFullYear()}
+function closeLot(){document.getElementById("scrim").classList.remove("on");document.getElementById("drawer").classList.remove("on");if(lastFocus)lastFocus.focus()}
+document.getElementById("scrim").onclick=closeLot;
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLot()});
+
+/* Línea de tiempo del ciclo */
+function timeline(c,tw){
+  const span=Math.max(tw,c.weeks,1)*7;const W=500,L=78,R=10,H=128;
+  const x=d=>L+Math.max(0,Math.min(1,days(c.inicio,d)/span))*(W-L-R);
+  const lanes=[["Preparación",22],["Abonadas",48],["Fumigación",74],["Monitoreo",100]];
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Línea de tiempo del ciclo" style="margin-top:14px;overflow:visible">`;
+  lanes.forEach(([n,y])=>{s+=`<text x="0" y="${y+4}" font-size="11" fill="var(--muted)">${n}</text><line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)"/>`});
+  for(let k=0;k<=span/7;k+=4){const xx=L+(k*7/span)*(W-L-R);s+=`<text x="${xx}" y="${H-4}" font-size="10" fill="var(--muted)" text-anchor="middle">${k}</text>`}
+  const now=c.fin||todayStr;const nx=x(now);
+  s+=`<line x1="${nx}" x2="${nx}" y1="10" y2="${H-16}" stroke="var(--blue)" stroke-dasharray="3 3"/><text x="${nx}" y="8" font-size="10" fill="var(--blue)" text-anchor="middle">${c.fin?"fin":"hoy"}</text>`;
+  if(c.prep)[c.prep.desinf,c.prep.app1,c.prep.app2].filter(Boolean).forEach(d=>{s+=`<rect x="${x(d)-4}" y="18" width="8" height="8" transform="rotate(45 ${x(d)} 22)" fill="var(--muted)"><meta name="theme-color" content="#1C2640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>${fmt(d)}</title></rect>`});
+  c.abon.forEach(a=>{s+=`<circle cx="${x(a.fecha)}" cy="48" r="7" fill="var(--leaf)"><meta name="theme-color" content="#1C2640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>${a.num||""} abonada, ${fmt(a.fecha)}</title></circle><text x="${x(a.fecha)}" y="51.5" font-size="9" fill="#fff" text-anchor="middle" font-weight="600">${(a.num||"").replace(/\D/g,"")}</text>`});
+  c.fum.forEach(f=>{const xx=x(f.fecha);s+=`<path d="M${xx} 67 L${xx+6} 79 L${xx-6} 79 Z" fill="#C98A2E"><meta name="theme-color" content="#1C2640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>${fmt(f.fecha)}: ${esc(f.plagas||"")}</title></path>`});
+  c.monDates.forEach(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));s+=`<rect x="${x(d)-5}" y="95" width="10" height="10" rx="2" fill="${col(st.rate).bg}" stroke="var(--line)"><meta name="theme-color" content="#1C2640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>${fmt(d)}: ${pct(st.rate)}</title></rect>`});
+  s+=`<text x="0" y="${H-4}" font-size="10" fill="var(--muted)">Semana</text></svg>`;
+  return s;
+}
+
+function controls(){
+  const fincas=[...new Set(M.cycles.map(c=>c.finca))];
+  if(!state.finca)state.finca=fincas.includes("Oasis Garden")?"Oasis Garden":fincas[0];
+  const fs=document.getElementById("finca");fs.innerHTML=fincas.map(f=>`<option ${f===state.finca?"selected":""}>${esc(f)}</option>`).join("");
+  fs.hidden=fincas.length<2;fs.onchange=()=>{state.finca=fs.value;state.variedad="Todas";controls();render()};
+  const vars=["Todas",...new Set(M.cycles.filter(c=>c.finca===state.finca).map(c=>c.variedad))];
+  const vs=document.getElementById("varSeg");vs.hidden=vars.length<3;
+  vs.innerHTML=vars.map(v=>`<button aria-pressed="${v===state.variedad}">${esc(v)}</button>`).join("");
+  vs.querySelectorAll("button").forEach(b=>b.onclick=()=>{state.variedad=b.textContent;controls();render()});
+  document.querySelectorAll("#sortSeg button").forEach(b=>b.onclick=()=>{state.sort=b.dataset.s;document.querySelectorAll("#sortSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
+}
+
+async function init(){
+  RAW=SNAPSHOT;DATA_AT=SNAPSHOT_DATE?fmt(SNAPSHOT_DATE):"";
+  if(!SOURCE_URL&&!RAW){document.getElementById("global").innerHTML=`<h2>Falta configurar el enlace de datos</h2><p class="sub" style="margin-top:8px">Pega la URL de Apps Script en SOURCE_URL, dentro de index.html.</p>`;return}
+  if(SOURCE_URL){
+    document.getElementById("global").innerHTML=`<p class="sub">Cargando la información más reciente…</p>`;
+    try{const r=await fetch(SOURCE_URL,{cache:"no-store"});if(!r.ok)throw new Error(r.status);RAW=await r.json();if(RAW.error)throw new Error(RAW.error);
+      const u=RAW.actualizado?new Date(RAW.actualizado):new Date();DATA_AT=u.getDate()+" "+MES[u.getMonth()]+", "+u.toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});}
+    catch(e){if(!RAW){document.getElementById("global").innerHTML=`<h2>No se pudo cargar la información</h2><p class="sub" style="margin-top:8px">Revisa la conexión a internet y vuelve a abrir el tablero. Si el problema sigue, la hoja de cálculo o el enlace de Apps Script cambió (${esc(e.message)}).</p>`;return}}
+  }
+  M=build(RAW);controls();render();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&SOURCE_URL&&Date.now()-loadedAt>10*60e3)location.reload()});
+}
+const loadedAt=Date.now();
+init();
+</script>
+</body>
+</html>
