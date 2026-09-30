@@ -18,7 +18,7 @@
 <style>
 :root{
   --page:#FCFFFF; --onpage:#173428; --onpage-muted:#5A7368; --onpage-line:#C5D6CD; --onpage-soft:#EAF3EE;
-  --bg:#FCFFFF; --surface:#173428; --ink:#FCFFFF; --muted:#A9C4B6; --line:#2F5646; --soft:#22493A;
+  --bg:#FCFFFF; --surface:#457763; --ink:#FFFFFF; --muted:#DCEBE3; --line:#5E8C79; --soft:#3A6655;
   --blue:#E8C28F; --leaf:#7FB39A; --gold:#E8C28F; --focus:#457763; --shadow:0 2px 6px rgba(23,52,40,.10),0 12px 28px rgba(23,52,40,.12);
   --display:"Figtree",ui-sans-serif,system-ui,sans-serif;
   --serif:"Cormorant Garamond","Cormorant",Georgia,serif;
@@ -43,7 +43,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .seg{display:inline-flex;background:var(--onpage-soft);border-radius:999px;padding:3px}
 .seg button{border:0;background:transparent;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500;color:var(--onpage-muted);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--gold);color:#173428}
-select{font:500 13px var(--body);color:var(--onpage);background:var(--onpage-soft);border:0;border-radius:999px;padding:8px 12px}
+select{font:600 13px var(--body);color:var(--onpage);background:var(--onpage-soft);border:1px solid var(--onpage-line);cursor:pointer;border-radius:999px;padding:8px 12px}
 
 /* Resumen */
 .summary{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-bottom:18px}
@@ -503,9 +503,9 @@ function timeline(c,tw){
 
 function controls(){
   const fincas=[...new Set(M.cycles.map(c=>c.finca))];
-  if(!state.finca)state.finca=fincas.includes("Oasis Garden")?"Oasis Garden":fincas[0];
+  if(!state.finca){const q=new URLSearchParams(location.search).get("finca");state.finca=fincas.find(f=>q&&f.toLowerCase()===q.toLowerCase())||(fincas.includes("Oasis Garden")?"Oasis Garden":fincas[0]);}
   const fs=document.getElementById("finca");fs.innerHTML=fincas.map(f=>`<option ${f===state.finca?"selected":""}>${esc(f)}</option>`).join("");
-  fs.hidden=fincas.length<2;fs.onchange=()=>{state.finca=fs.value;state.variedad="Todas";controls();render()};
+  fs.hidden=fincas.length<2;fs.onchange=()=>{state.finca=fs.value;state.variedad="Todas";try{const u=new URL(location.href);u.searchParams.set("finca",fs.value);history.replaceState(null,"",u)}catch(e){}controls();render()};
   const vars=["Todas",...new Set(M.cycles.filter(c=>c.finca===state.finca).map(c=>c.variedad))];
   const vs=document.getElementById("varSeg");vs.hidden=vars.length<3;
   vs.innerHTML=vars.map(v=>`<button aria-pressed="${v===state.variedad}">${esc(v)}</button>`).join("");
