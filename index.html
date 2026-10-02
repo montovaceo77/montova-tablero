@@ -91,6 +91,35 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .delta{display:inline-block;font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:8px}
 @media (max-width:860px){.traps{grid-template-columns:1fr;gap:18px}}
 
+/* Pestañas */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--onpage-line);margin:-6px 0 22px}
+.tabs button{border:0;background:none;padding:10px 4px;margin-right:18px;font:600 15px var(--body);color:var(--onpage-muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--onpage);border-bottom-color:var(--focus)}
+
+/* Semana a semana */
+.wk-head{margin-bottom:18px}
+.wk-head .t{font:600 34px/1.1 var(--serif);color:var(--onpage);margin:0 0 4px}
+.wk-head p.s{margin:0 0 16px;color:var(--onpage-muted);font-size:14px}
+.alerts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.alert{background:var(--surface);color:var(--ink);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);border-left:5px solid var(--c)}
+.alert b{display:block;font-size:14.5px;margin-bottom:3px}
+.alert span{font-size:13px;color:var(--muted)}
+.ok{background:var(--onpage-soft);color:var(--onpage);border-radius:16px;padding:14px 16px;font-weight:600}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart h3{font:600 15px var(--body);margin:0 0 2px}
+.chart .cap{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.chart .now{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.chart .now b{font:800 26px/1 var(--display)}
+.chart svg{display:block;width:100%;height:auto}
+.lg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12.5px}
+.lg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.chg{width:100%;border-collapse:collapse;font-size:14px}
+.chg th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:0 8px 8px 0}
+.chg td{padding:9px 8px 9px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.chg .d{font-weight:700}
+.scroll{overflow-x:auto}
+@media (max-width:860px){.charts{grid-template-columns:1fr}}
+
 /* Mapa */
 .map-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
 .map-head .t{font:600 34px/1.1 var(--serif);letter-spacing:.01em;margin:0;color:var(--onpage)}
@@ -180,6 +209,12 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
     </div>
   </header>
 
+  <nav class="tabs" id="tabs" role="tablist">
+    <button role="tab" data-v="resumen" aria-selected="true">Resumen</button>
+    <button role="tab" data-v="semanas" aria-selected="false">Semana a semana</button>
+  </nav>
+
+  <div id="viewResumen">
   <section class="summary">
     <div class="panel" id="global"></div>
     <div class="panel">
@@ -211,6 +246,14 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
     <div class="grid" id="grid"></div>
   </section>
 
+  </div>
+
+  <div id="viewSemanas" hidden>
+    <section class="wk-head" id="wkHead"></section>
+    <section class="charts" id="charts"></section>
+    <section class="panel" id="lotChanges"></section>
+  </div>
+
   <details class="dq" id="dq"></details>
 </div>
 
@@ -221,6 +264,8 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
 /* Para conectar en vivo (fuera de claude.ai, p. ej. GitHub Pages): pon aquí la URL del doGet de Apps Script
    que devuelva este mismo formato JSON. Si queda vacía, se usan los datos incluidos. */
 const SOURCE_URL = "https://script.google.com/macros/s/AKfycbzSwcaE7Ub0WUaKTNZZ8ZGf-tgdpu6wNEzCXjnzf9R4MX4jhHVCTgrhpjsI_A-S0sAT/exec";
+/* Límites de alerta (puntos porcentuales o %). Ajustables. */
+const ALERTAS = { cultivo: 5, lote: 15, plaga: 5, trampas: 20, descarte: 5 };
 const LECTURAS_SEMANA = 2; // trampas: lunes y miércoles
 const SNAPSHOT = null;
 const SNAPSHOT_DATE = "";
@@ -420,7 +465,123 @@ function render(){
   if(rep.length)dq.push(`${rep.length===1?"Una cama aparece":rep.length+" camas aparecen"} dos veces el mismo día en Monitoreo; se usa el último registro: ${rep.map(r=>`${r.lote}, cama ${r.cama}, ${fmt(r.fecha)}`).join("; ")}.`);
   if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
   const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
+  renderWeeks();
   dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+}
+
+/* ---------- Semana a semana ---------- */
+const SERIES_COL=["#E8C28F","#FFFFFF","#F4A9A0","#A9CBEF","#C9E59B","#D9B8F0"];
+const wkNum=k=>+k.split("-")[1];
+function prevKey(k){const [y,w]=k.split("-").map(Number);if(w>1)return y+"-"+String(w-1).padStart(2,"0");const d=new Date(Date.UTC(y-1,11,28));const s=d.toISOString().slice(0,10);return wkKey(s)}
+
+function weeklySeries(cs){
+  const W=weekly(cs);const out={};
+  W.forEach(w=>{out[w.w]={inc:w.s.rate,pest:{},points:w.s.points,lots:w.lots};Object.entries(w.s.pest).forEach(([p,v])=>out[w.w].pest[p]=v/w.s.points)});
+  const tr=(RAW.trampas||[]).filter(r=>r.finca===state.finca&&r.fecha);const T={};
+  tr.forEach(r=>{const k=wkKey(r.fecha);(T[k]??={s:0,n:0});T[k].s+=r.t.reduce((a,b)=>a+(+b||0),0);T[k].n++});
+  Object.entries(T).forEach(([k,v])=>{(out[k]??={pest:{}}).trap=v.s/v.n;out[k].trapN=v.n});
+  const S={};cs.forEach(c=>c.sala.forEach(r=>{const k=wkKey(r.fecha);(S[k]??={u:0,d:0});S[k].u+=r.util;S[k].d+=r.desc}));
+  Object.entries(S).forEach(([k,v])=>{if(v.u+v.d){(out[k]??={pest:{}}).desc=v.d/(v.u+v.d);out[k].util=v.u;out[k].dT=v.d}});
+  return out;
+}
+function lotWeek(c,k){const ds=c.monDates.filter(d=>wkKey(d)===k);if(!ds.length)return null;return stats(c.mon.filter(m=>m.fecha===ds.at(-1))).rate}
+
+function pair(S,f){const ks=Object.keys(S).filter(k=>S[k][f]!=null).sort();const c=ks.at(-1);if(!c)return {};const p=prevKey(c);return {c,p:S[p]&&S[p][f]!=null?p:null}}
+function computeAlerts(cs,S){
+  const A=[];const pp=v=>Math.round(v*100);const ws=(c,p)=>` (semana ${wkNum(p)} a ${wkNum(c)})`;
+  const m=pair(S,"inc");
+  if(m.p){const a=S[m.c],b=S[m.p];
+    if(pp(a.inc-b.inc)>=ALERTAS.cultivo)A.push({sev:.85,h:`La incidencia del cultivo subió ${pp(a.inc-b.inc)} puntos`,p:`Pasó de ${pct(b.inc)} a ${pct(a.inc)} de puntos afectados${ws(m.c,m.p)}.`});
+    Object.entries(a.pest).forEach(([p,v])=>{const o=b.pest[p];
+      if(!o){if(v>0)A.push({sev:.7,h:`Apareció ${p}`,p:`No se vio en la semana ${wkNum(m.p)}; en la ${wkNum(m.c)} está en ${pct(v)} de los puntos.`})}
+      else if(pp(v-o)>=ALERTAS.plaga)A.push({sev:.75,h:`${p} subió ${pp(v-o)} puntos`,p:`Pasó de ${pct(o)} a ${pct(v)} de los puntos inspeccionados${ws(m.c,m.p)}.`})});
+    cs.filter(c=>c.active).forEach(c=>{const x=lotWeek(c,m.c),y=lotWeek(c,m.p);if(x!=null&&y!=null&&pp(x-y)>=ALERTAS.lote)A.push({sev:Math.min(1,.5+x/2),h:`${c.lote} empeoró ${pp(x-y)} puntos`,p:`Pasó de ${pct(y)} a ${pct(x)} de puntos afectados${ws(m.c,m.p)}.`,lot:c.id})});
+  }
+  const t=pair(S,"trap");
+  if(t.p&&S[t.p].trap>0){const a=S[t.c],b=S[t.p],d=(a.trap-b.trap)/b.trap;if(d*100>=ALERTAS.trampas)A.push({sev:.7,h:`Los insectos en trampas subieron ${Math.round(d*100)}%`,p:`De ${num(Math.round(b.trap))} a ${num(Math.round(a.trap))} insectos por lectura${ws(t.c,t.p)}.${a.trapN<LECTURAS_SEMANA?" La semana aún no tiene todas sus lecturas.":""}`})}
+  const s=pair(S,"desc");
+  if(s.p){const a=S[s.c],b=S[s.p];if(pp(a.desc-b.desc)>=ALERTAS.descarte)A.push({sev:.8,h:`El descarte en sala subió ${pp(a.desc-b.desc)} puntos`,p:`Pasó de ${pct(b.desc)} a ${pct(a.desc)} de lo cosechado${ws(s.c,s.p)}.`})}
+  return A.sort((x,y)=>y.sev-x.sev);
+}
+
+function niceMax(v,isPct){if(isPct){const c=[.1,.2,.3,.4,.5,.6,.8,1];return c.find(x=>x>=v*1.05)||1}
+  const e=Math.pow(10,Math.floor(Math.log10(Math.max(v,1))));for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]){if(m*e>=v*1.08)return m*e}return 10*e}
+function lineChart(keys,series,{fmt=v=>pct(v),min=0,isPct=true}={}){
+  const sm=window.innerWidth<600;const W=sm?340:520,H=sm?200:190,L=42,R=28,T=14,B=26;
+  const vals=series.flatMap(s=>s.values.filter(v=>v!=null));
+  const hi=niceMax(Math.max(...vals,isPct?.05:1),isPct);
+  const X=i=>keys.length<2?L+(W-L-R)/2:L+i*(W-L-R)/(keys.length-1);
+  const Y=v=>T+(1-(v-min)/(hi-min))*(H-T-B);
+  const C=getComputedStyle(document.documentElement);const line=C.getPropertyValue("--line").trim()||"#5E8C79",mut=C.getPropertyValue("--muted").trim()||"#DCEBE3";
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  for(let g=0;g<=4;g++){const v=min+(hi-min)*g/4;const y=Y(v);s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="${line}" stroke-width="1"/><text x="${L-6}" y="${y+4}" font-size="11" fill="${mut}" text-anchor="end">${fmt(v)}</text>`}
+  const step=Math.ceil(keys.length/8);
+  keys.forEach((k,i)=>{if(i%step===0||i===keys.length-1)s+=`<text x="${X(i)}" y="${H-6}" font-size="11" fill="${mut}" text-anchor="middle">Sem ${wkNum(k)}</text>`});
+  series.forEach(se=>{
+    let d="",open=false;se.values.forEach((v,i)=>{if(v==null){open=false;return}d+=(open?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";open=true});
+    s+=`<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    se.values.forEach((v,i)=>{if(v==null)return;const last=i===se.values.length-1;s+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${last?4.5:3}" fill="${se.color}"><meta name="theme-color" content="#FCFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>${esc(se.name)}, semana ${wkNum(keys[i])}: ${fmt(v)}</title></circle>`});
+  });
+  return s+`</svg>`;
+}
+
+function renderWeeks(){
+  const cs=visible();const S=weeklySeries(cs);
+  const keys=Object.keys(S).sort().slice(-12);
+  const head=document.getElementById("wkHead"),charts=document.getElementById("charts"),lc=document.getElementById("lotChanges");
+  if(!keys.length){head.innerHTML=`<p class="ok">Todavía no hay datos semanales para comparar.</p>`;charts.innerHTML="";lc.innerHTML="";return}
+  const cur=keys.at(-1),prv=prevKey(cur);const hasPrev=keys.length>1;
+  const A=computeAlerts(cs,S);
+  head.innerHTML=`<h2 class="t">Semana ${wkNum(cur)}${S[prv]?` vs. semana ${wkNum(prv)}`:""}</h2>
+    <p class="s">${hasPrev?`Alertas según los límites acordados: cultivo +${ALERTAS.cultivo} puntos, lote +${ALERTAS.lote}, plaga +${ALERTAS.plaga} o nueva, trampas +${ALERTAS.trampas}%, descarte +${ALERTAS.descarte} puntos.`:"La comparación aparece cuando haya dos semanas seguidas con datos."}</p>
+    ${hasPrev?(A.length?`<div class="alerts">${A.map(a=>{const k=col(a.sev);return `<div class="alert" style="--c:${k.bg}"${a.lot!=null?` data-lot="${a.lot}" role="button" tabindex="0"`:""}><b>${esc(a.h)}</b><span>${esc(a.p)}</span></div>`}).join("")}</div>`:`<p class="ok">Sin alertas esta semana: ningún indicador superó los límites.</p>`):""}`;
+  head.querySelectorAll("[data-lot]").forEach(e=>{e.style.cursor="pointer";e.onclick=()=>openLot(+e.dataset.lot,e)});
+  const v=f=>keys.map(k=>S[k]&&S[k][f]!=null?S[k][f]:null);
+  const card=(title,cap,nowTxt,chart,legend="")=>`<div class="panel chart"><h3>${title}</h3><p class="cap">${cap}</p>${nowTxt}${chart}${legend}</div>`;
+  const now=(f,fm,isPct=true)=>{const q=pair(S,f);if(!q.c)return "";const a=S[q.c][f];let d="";
+    if(q.p){const b=S[q.p][f];const x=isPct?Math.round((a-b)*100):(b?Math.round((a-b)/b*100):0);
+      d=x?`<span class="note" style="margin:0">${x>0?"▲":"▼"} ${Math.abs(x)}${isPct?" puntos":"%"} vs. semana ${wkNum(q.p)}</span>`:`<span class="note" style="margin:0">igual que la semana ${wkNum(q.p)}</span>`}
+    return `<div class="now"><b>${fm(a)}</b><span class="note" style="margin:0">Semana ${wkNum(q.c)}</span>${d}</div>`};
+  // 1. Incidencia
+  const inc=v("inc");
+  let html=card("Incidencia del cultivo","Porcentaje de puntos inspeccionados con alguna plaga o enfermedad.",
+    now("inc",pct),
+    lineChart(keys,[{name:"Incidencia",color:SERIES_COL[0],values:inc}]));
+  // 2. Plagas principales
+  const tot={};keys.forEach(k=>Object.entries(S[k].pest||{}).forEach(([p,x])=>tot[p]=(tot[p]||0)+x));
+  const top=Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]);
+  const pser=top.map((p,i)=>({name:p,color:SERIES_COL[i%SERIES_COL.length],values:keys.map(k=>S[k].inc!=null?(S[k].pest[p]||0):null)}));
+  html+=card("Plagas y enfermedades principales","Porcentaje de puntos donde aparece cada una.","",
+    pser.length?lineChart(keys,pser):`<p class="empty">Sin monitoreos todavía.</p>`,
+    `<div class="lg">${pser.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)} ${s.values.at(-1)!=null?pct(s.values.at(-1)):""}</span>`).join("")}</div>`);
+  // 3. Trampas
+  const tr=v("trap");
+  html+=card("Trampas de insectos","Promedio de insectos por lectura (lunes y miércoles).",
+    now("trap",x=>num(Math.round(x)),false),
+    tr.some(x=>x!=null)?lineChart(keys,[{name:"Insectos por lectura",color:SERIES_COL[2],values:tr}],{fmt:x=>num(Math.round(x)),isPct:false}):`<p class="empty">Sin lecturas de trampas todavía.</p>`);
+  // 4. Descarte
+  const de=v("desc");
+  html+=card("Descarte en sala","Porcentaje de lo cosechado que se descarta.",
+    now("desc",pct),
+    de.some(x=>x!=null)?lineChart(keys,[{name:"Descarte",color:SERIES_COL[3],values:de}]):`<p class="empty">Sin ingresos a sala todavía.</p>`);
+  charts.innerHTML=html;
+  // Lotes que más cambiaron
+  const mp=pair(S,"inc");const lcur=mp.c,lprv=mp.p;
+  if(!lprv){lc.innerHTML=`<h2>Lotes que más cambiaron</h2><p class="note">Aparece cuando un lote tenga monitoreo en dos semanas seguidas.</p>`;return}
+  const rows=cs.filter(c=>c.active).map(c=>({c,x:lotWeek(c,lcur),y:lotWeek(c,lprv)})).filter(r=>r.x!=null&&r.y!=null).map(r=>({...r,d:r.x-r.y})).sort((a,b)=>b.d-a.d);
+  lc.innerHTML=`<h2>Lotes que más cambiaron</h2><p class="hint" style="margin:0 0 12px;color:var(--muted);font-size:13px">Incidencia de cada lote en su último monitoreo de cada semana. Toca un lote para ver su historia.</p>`+
+    (rows.length?`<div class="scroll"><table class="chg"><thead><tr><th>Lote</th><th>Sem ${wkNum(lprv)}</th><th>Sem ${wkNum(lcur)}</th><th>Cambio</th></tr></thead><tbody>${rows.map((r,i)=>{const k=r.d>0?col(Math.min(1,.4+r.d*2)):null;
+      return `<tr data-lot="${r.c.id}" style="cursor:pointer"${i>=8&&!lc.dataset.all?" hidden":""}><td>${esc(r.c.lote)}</td><td>${pct(r.y)}</td><td>${pct(r.x)}</td><td class="d" style="color:${r.d>0?k.bg:"var(--leaf)"}">${r.d>0?"▲":r.d<0?"▼":""} ${Math.abs(Math.round(r.d*100))} pts</td></tr>`}).join("")}</tbody></table></div>${rows.length>8?`<button class="more" id="moreLots">${lc.dataset.all?"Ver solo los 8 que más cambiaron":"Ver los "+rows.length+" lotes"}</button>`:""}`:`<p class="empty">Ningún lote tiene monitoreo en las dos semanas todavía.</p>`);
+  const ml=document.getElementById("moreLots");if(ml)ml.onclick=()=>{lc.dataset.all=lc.dataset.all?"":"1";renderWeeks()};
+  lc.querySelectorAll("[data-lot]").forEach(e=>e.onclick=()=>openLot(+e.dataset.lot,e));
 }
 
 function renderTraps(){
@@ -563,6 +724,10 @@ function timeline(c,tw){
   return s;
 }
 
+function setView(v){state.view=v;document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
+  document.getElementById("viewResumen").hidden=v!=="resumen";document.getElementById("viewSemanas").hidden=v!=="semanas";
+  try{const u=new URL(location.href);if(v==="semanas")u.searchParams.set("vista","semanas");else u.searchParams.delete("vista");history.replaceState(null,"",u)}catch(e){}}
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 function controls(){
   const fincas=[...new Set(M.cycles.map(c=>c.finca))];
   if(!state.finca){const q=new URLSearchParams(location.search).get("finca");state.finca=fincas.find(f=>q&&f.toLowerCase()===q.toLowerCase())||(fincas.includes("Oasis Garden")?"Oasis Garden":fincas[0]);}
@@ -584,7 +749,7 @@ async function init(){
       const u=RAW.actualizado?new Date(RAW.actualizado):new Date();DATA_AT=u.getDate()+" "+MES[u.getMonth()]+", "+u.toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});}
     catch(e){if(!RAW){document.getElementById("global").innerHTML=`<h2>No se pudo cargar la información</h2><p class="sub" style="margin-top:8px">Revisa la conexión a internet y vuelve a abrir el tablero. Si el problema sigue, la hoja de cálculo o el enlace de Apps Script cambió (${esc(e.message)}).</p>`;return}}
   }
-  M=build(RAW);controls();render();
+  M=build(RAW);controls();render();setView(new URLSearchParams(location.search).get("vista")==="semanas"?"semanas":"resumen");
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&SOURCE_URL&&Date.now()-loadedAt>10*60e3)location.reload()});
 }
