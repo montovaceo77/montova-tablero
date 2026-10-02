@@ -259,8 +259,8 @@ function build(raw){
   const orphan=(what,finca,lote)=>{const k=finca+"|"+lote;(orphans[k]??={finca,lote,what:new Set()}).what.add(what)};
   raw.prep.forEach(p=>{const c=cycles.find(c=>c.finca===p.finca&&c.lote===p.lote&&c.inicio===p.inicio)||find(p.finca,p.lote,p.inicio||"9999");if(c)c.prep=p});
   // monitoreo: una fila por cama y fecha (la última registrada)
-  const last={};let repeated=0;
-  raw.monitoreo.forEach(r=>{const k=r[1]+"|"+r[2]+"|"+r[3]+"|"+r[4];if(last[k]){repeated++;if(Number(r[0])>Number(last[k][0]))last[k]=r}else last[k]=r});
+  const last={};let repeated=0;const repList=[];
+  raw.monitoreo.forEach(r=>{const k=r[1]+"|"+r[2]+"|"+r[3]+"|"+r[4];if(last[k]){repeated++;repList.push({fecha:r[1],finca:r[2],lote:r[3],cama:r[4]});if(Number(r[0])>Number(last[k][0]))last[k]=r}else last[k]=r});
   Object.values(last).forEach(r=>{
     const [id,fecha,finca,lote,cama,p1,p2,p3]=r;const c=find(finca,lote,fecha);
     const pts=[p1,p2,p3].map(parsePoint);
@@ -294,7 +294,7 @@ function build(raw){
   const finished=cycles.filter(c=>!c.active&&c.fin);
   const typical=finished.length?Math.round(finished.reduce((s,c)=>s+c.weeks,0)/finished.length):34;
   const allMonDates=cycles.flatMap(c=>c.monDates);
-  return {cycles,orphans:Object.values(orphans),repeated,typical,hasMon:allMonDates.length>0};
+  return {cycles,orphans:Object.values(orphans),repeated,repList,typical,hasMon:allMonDates.length>0};
 }
 
 function stats(rows){
@@ -416,7 +416,8 @@ function render(){
   // Calidad de datos
   const dq=[];const orph=M.orphans.filter(o=>o.finca===state.finca);
   orph.forEach(o=>dq.push(`${o.lote} tiene registros de ${[...o.what].join(" y ")}, pero no está programado en Lotes.`));
-  if(M.repeated)dq.push(`${M.repeated} camas aparecen dos veces el mismo día en Monitoreo; se usa el último registro.`);
+  const rep=M.repList.filter(r=>r.finca===state.finca);
+  if(rep.length)dq.push(`${rep.length===1?"Una cama aparece":rep.length+" camas aparecen"} dos veces el mismo día en Monitoreo; se usa el último registro: ${rep.map(r=>`${r.lote}, cama ${r.cama}, ${fmt(r.fecha)}`).join("; ")}.`);
   if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
   const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
   dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
