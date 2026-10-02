@@ -75,6 +75,17 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .insight h3{font:600 15px/1.3 var(--body);margin:0 0 6px}
 .insight p{margin:0;color:var(--muted);font-size:13.5px}
 
+.traps[hidden]{display:none}
+.traps{margin:-10px 0 28px;display:grid;grid-template-columns:1fr 1.2fr 1.3fr;gap:26px;align-items:start}
+.traps .lbl{font-size:13px;color:var(--muted);margin:0 0 4px}
+.traps .big{font-size:40px}
+.trow{display:grid;grid-template-columns:70px 1fr 44px;gap:10px;align-items:center;font-size:13.5px;margin:7px 0}
+.trow .bar{height:8px;border-radius:999px;background:var(--soft);overflow:hidden}
+.trow .bar i{display:block;height:100%;border-radius:999px;background:var(--gold)}
+.trow .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.delta{display:inline-block;font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:8px}
+@media (max-width:860px){.traps{grid-template-columns:1fr;gap:18px}}
+
 /* Mapa */
 .map-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
 .map-head .t{font:600 34px/1.1 var(--serif);letter-spacing:.01em;margin:0;color:var(--onpage)}
@@ -175,6 +186,8 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
 
   <section class="insights" id="insights"></section>
 
+  <section class="panel traps" id="traps" hidden></section>
+
   <section>
     <div class="map-head">
       <div>
@@ -255,7 +268,13 @@ function build(raw){
       if(c)c.fum.push({...r,plagasL:plagas});else orphan("fumigación",r.finca,lote);
     });
   });
-  (raw.ingreso||[]).forEach(r=>{const c=find(r.finca,r.lote,r.fecha);if(c)c.sala.push(r);else orphan("ingreso a sala",r.finca,r.lote)});
+  (raw.ingreso||[]).forEach(r0=>{
+    const q=+r0.cantidad||0,dn=+r0.descarte,dt=String(r0.descarte??"").trim();
+    let util=q,desc=0;
+    if(dn>0&&r0.tipo){desc=dn}                               // columna Descarte numérica junto a una variedad
+    else if(/^s[ií]/i.test(dt)||r0.motivo||(!r0.tipo&&q)){util=0;desc=q} // fila de descarte (Descarte = "Si")
+    const r={...r0,util,desc};
+    const c=find(r.finca,r.lote,r.fecha);if(c)c.sala.push(r);else orphan("ingreso a sala",r.finca,r.lote)});
   cycles.forEach(c=>{
     const dates=[...new Set(c.mon.map(m=>m.fecha))].sort();
     c.monDates=dates;
@@ -318,7 +337,9 @@ function render(){
     let trend="";
     if(prev){const d=s.rate-prev.s.rate;trend=` ${d>0?"Sube":"Baja"} ${Math.abs(Math.round(d*100))} puntos frente a la semana anterior.`}
     else trend=" La tendencia semanal aparece a partir del segundo monitoreo.";
-    const sala=cs.reduce((a,c)=>a+c.sala.filter(r=>wkKey(r.fecha)===cur.w).reduce((x,r)=>x+(+r.cantidad||0),0),0);const salaAny=cs.some(c=>c.sala.length);
+    const allSala=cs.flatMap(c=>c.sala);const salaAny=allSala.length>0;const sW=salaAny?allSala.map(r=>wkKey(r.fecha)).sort().at(-1):null;
+    const sRows=allSala.filter(r=>wkKey(r.fecha)===sW);const sala=sRows.reduce((x,r)=>x+r.util,0),salaD=sRows.reduce((x,r)=>x+r.desc,0);
+    const sWn=sW?+sW.split("-")[1]:null;
     const fumW=cs.reduce((a,c)=>a+c.fum.filter(f=>wkKey(f.fecha)===cur.w).length,0);
     const abW=cs.reduce((a,c)=>a+c.abon.filter(f=>wkKey(f.fecha)===cur.w).length,0);
     g.innerHTML=`<h2>Estado sanitario del cultivo, semana ${wk}</h2>
@@ -330,7 +351,7 @@ function render(){
         <div class="fact"><b>${active.length}</b><span>lotes en producción</span></div>
         <div class="fact"><b>${cur.lots} de ${active.length}</b><span>lotes monitoreados</span></div>
         <div class="fact"><b>${fumW} / ${abW}</b><span>fumigaciones / abonadas esta semana</span></div>
-        <div class="fact"><b>${salaAny?num(sala):"Sin datos"}</b><span>tallos a sala esta semana</span></div>
+        <div class="fact"><b>${salaAny?num(sala):"Sin datos"}</b><span>${salaAny?`tallos a sala, semana ${sWn}${sala+salaD?`. Descarte ${pct(salaD/(sala+salaD))}`:""}`:"tallos a sala"}</span></div>
       </div>`;
   }
 
@@ -363,6 +384,9 @@ function render(){
   }
   I.innerHTML=ins.slice(0,3).map(x=>`<div class="insight" style="--c:${x.c}"><h3>${esc(x.h)}</h3><p>${esc(x.p)}</p></div>`).join("");
 
+  // Trampas de insectos (por finca y semana)
+  renderTraps();
+
   // Mapa
   const lens=document.getElementById("lens");
   if(state.lens){lens.hidden=false;lens.innerHTML=`Mostrando: ${esc(state.lens)} <button aria-label="Quitar filtro">Quitar</button>`;lens.querySelector("button").onclick=()=>{state.lens=null;render()}}
@@ -390,6 +414,42 @@ function render(){
   if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
   const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
   dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+}
+
+function renderTraps(){
+  const el=document.getElementById("traps");
+  const rows=(RAW.trampas||[]).filter(r=>r.finca===state.finca&&r.fecha);
+  if(!rows.length){el.hidden=true;return}
+  el.hidden=false;
+  const names=(rows.find(r=>r.n&&r.n.length)||{}).n||rows[0].t.map((_,i)=>"Trampa_"+(i+1));
+  const W={};rows.forEach(r=>{const k=wkKey(r.fecha);const w=(W[k]??={k,sem:r.semana||isoWeek(r.fecha).w,t:names.map(()=>0),n:0});r.t.forEach((v,i)=>w.t[i]+=(+v||0));w.n++});
+  const weeks=Object.values(W).sort((a,b)=>a.k<b.k?-1:1);const cur=weeks.at(-1),prev=weeks.at(-2);
+  const tot=w=>w.t.reduce((a,b)=>a+b,0);const T=tot(cur);
+  let delta="";
+  if(prev){const p=tot(prev),d=p?(T-p)/p:null;
+    if(d!=null){const up=d>0.001;const k=up?col(Math.min(1,.45+d)):null;
+      delta=`<span class="delta" style="background:${up?k.bg:"var(--soft)"};color:${up?k.fg:"var(--ink)"}">${up?"Sube":"Baja"} ${Math.abs(Math.round(d*100))}% frente a la semana ${prev.sem}</span>`}}
+  else delta=`<p class="note">La comparación semanal aparece desde la segunda semana de lectura.</p>`;
+  const mx=Math.max(...cur.t,1);
+  const label=n=>n.replace(/_/g," ").replace(/^trampa/i,"Trampa");
+  const recent=weeks.slice(-8);const mT=Math.max(...recent.map(tot),1);
+  const H=110,bw=Math.min(34,260/recent.length-8);
+  let svg=`<svg viewBox="0 0 ${recent.length*(bw+10)} ${H+18}" width="100%" style="max-width:${recent.length*(bw+10)*1.6}px;max-height:150px" role="img" aria-label="Insectos por semana">`;
+  recent.forEach((w,i)=>{const h=Math.max(2,tot(w)/mT*H);const x=i*(bw+10);const last=i===recent.length-1;
+    svg+=`<rect x="${x}" y="${H-h}" width="${bw}" height="${h}" rx="4" fill="${last?"var(--gold)":"var(--soft)"}"><meta name="theme-color" content="#FCFFFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montova">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Semana ${w.sem}: ${num(tot(w))} insectos</title></rect><text x="${x+bw/2}" y="${H+14}" font-size="10" fill="var(--muted)" text-anchor="middle">S${w.sem}</text>`});
+  svg+=`</svg>`;
+  el.innerHTML=`<div><h2>Trampas de insectos</h2><p class="lbl" style="margin-top:2px">Semana ${cur.sem}, ${names.length} trampas a lo largo del cultivo</p>
+      <span class="big">${num(T)}</span><p class="note" style="margin:2px 0 0">insectos capturados${cur.n>1?` en ${cur.n} lecturas`:""}</p>${delta}</div>
+    <div><p class="lbl">Por trampa</p>${names.map((n,i)=>`<div class="trow"><span>${esc(label(n))}</span><span class="bar"><i style="width:${cur.t[i]/mx*100}%"></i></span><span class="v">${num(cur.t[i])}</span></div>`).join("")}</div>
+    <div><p class="lbl">Evolución semanal</p>${svg}</div>`;
 }
 
 let lastFocus=null;
@@ -420,11 +480,14 @@ function openLot(id,from){
   const names=["1era","2da","3era","4ta"];const extra=c.abon.filter(a=>!names.includes(a.num));
   const abHTML=`<span class="big">${c.abon.length}</span><div class="steps">${names.map(n=>{const a=c.abon.find(x=>x.num===n);return `<span class="${a?"done":""}" title="${a?esc(fmt(a.fecha)+": "+(a.prod||"")):"Pendiente"}">${n}</span>`}).join("")}</div><p class="note">${c.abon.length?"Última: "+fmt(c.abon.at(-1).fecha)+(c.abon.at(-1).prod?", "+esc(c.abon.at(-1).prod):""):"Sin abonadas registradas todavía."}${extra.length?" Además "+extra.length+" registro(s) sin número.":""}</p>`;
   // Sala
-  const salaT=c.sala.reduce((a,r)=>a+(+r.cantidad||0),0),desT=c.sala.reduce((a,r)=>a+(+r.descarte||0),0);
-  const porTipo={},motivos={};c.sala.forEach(r=>{if(r.tipo)porTipo[r.tipo]=(porTipo[r.tipo]||0)+(+r.cantidad||0);if(r.motivo&&+r.descarte)motivos[r.motivo]=(motivos[r.motivo]||0)+(+r.descarte||0)});
-  const salaHTML=c.sala.length?`<span class="big">${num(salaT)}</span><p class="note">tallos en ${c.sala.length} ingreso${c.sala.length>1?"s":""}, último el ${fmt(c.sala.at(-1).fecha)}</p>
+  const salaT=c.sala.reduce((a,r)=>a+r.util,0),desT=c.sala.reduce((a,r)=>a+r.desc,0);
+  const porTipo={},motivos={};c.sala.forEach(r=>{if(r.util)porTipo[r.tipo||"Sin variedad"]=(porTipo[r.tipo||"Sin variedad"]||0)+r.util;if(r.desc)motivos[r.motivo||"Sin motivo"]=(motivos[r.motivo||"Sin motivo"]||0)+r.desc});
+  const tot=salaT+desT,dc=tot?col(desT/tot):null;
+  const salaHTML=c.sala.length?`<span class="big">${num(salaT)}</span><p class="note">tallos útiles, último ingreso el ${fmt(c.sala.at(-1).fecha)}</p>
     <div style="margin-top:8px">${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}</div>
-    <p class="note">Descarte: <b style="color:var(--ink)">${num(desT)}</b>${salaT+desT?" ("+pct(desT/(salaT+desT))+")":""}${Object.keys(motivos).length?". Motivos: "+Object.entries(motivos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>esc(k)+" "+num(v)).join(", "):""}</p>`:`<p class="empty">Sin ingresos a sala registrados en este ciclo.</p>`;
+    ${desT?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div style="display:flex;align-items:baseline;gap:8px"><span class="big" style="font-size:22px">${num(desT)}</span><span class="note" style="margin:0">tallos de descarte, ${pct(desT/tot)} de lo cosechado</span></div>
+      <div class="meter" style="margin:8px 0 8px"><i style="width:${desT/tot*100}%;background:${dc.bg}"></i></div>
+      ${Object.entries(motivos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}</div>`:`<p class="note">Sin descarte registrado.</p>`}`:`<p class="empty">Sin ingresos a sala registrados en este ciclo.</p>`;
   // Preparación
   const p=c.prep;
   const prepHTML=p?`<ul class="list"><li><span class="dt">Picada</span>${fmt(p.picada)}</li><li><span class="dt">Desinfección</span>${fmt(p.desinf)}</li><li><span class="dt">Aplicación 1, ${fmt(p.app1)}</span>${esc(p.app1p||"—")}</li><li><span class="dt">Aplicación 2, ${fmt(p.app2)}</span>${esc(p.app2p||"—")}</li></ul>`:`<p class="empty">Sin registro de preparación de suelo.</p>`;
@@ -440,7 +503,7 @@ function openLot(id,from){
       <div class="card"><h4>Ingreso a sala</h4>${salaHTML}</div>
       <div class="card"><h4>Preparación de suelo</h4>${prepHTML}</div>
     </div>
-    ${prevCycles.length?`<p class="prev">Ciclo anterior: ${prevCycles.map(x=>`${fmt(x.inicio)} a ${fmt(x.fin)}, ${x.weeks} semanas, ${x.abon.length} abonadas, ${x.fum.length} fumigaciones, ${x.sala.length?num(x.sala.reduce((a,r)=>a+(+r.cantidad||0),0))+" tallos a sala":"sin ingreso a sala registrado"}`).join("; ")}.</p>`:""}`;
+    ${prevCycles.length?`<p class="prev">Ciclo anterior: ${prevCycles.map(x=>`${fmt(x.inicio)} a ${fmt(x.fin)}, ${x.weeks} semanas, ${x.abon.length} abonadas, ${x.fum.length} fumigaciones, ${x.sala.length?num(x.sala.reduce((a,r)=>a+r.util,0))+" tallos útiles a sala":"sin ingreso a sala registrado"}`).join("; ")}.</p>`:""}`;
   dr.querySelector(".close").onclick=closeLot;
   dr.querySelectorAll(".bed").forEach(b=>b.onclick=()=>{dr.querySelectorAll(".bed").forEach(x=>x.style.outline="");b.style.outline="2px solid var(--blue)";dr.querySelector("#bedInfo").textContent=b.dataset.d});
   document.getElementById("scrim").classList.add("on");dr.classList.add("on");dr.scrollTop=0;
