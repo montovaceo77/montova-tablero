@@ -83,6 +83,11 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .trow .bar{height:8px;border-radius:999px;background:var(--soft);overflow:hidden}
 .trow .bar i{display:block;height:100%;border-radius:999px;background:var(--gold)}
 .trow .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.wk{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:4px}
+.wkc{flex:0 1 52px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.wkb{width:100%;max-width:44px;border-radius:6px 6px 3px 3px;min-height:3px;flex:none}
+.wkv{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.wkl{font-size:11.5px;color:var(--muted);white-space:nowrap}
 .delta{display:inline-block;font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:8px}
 @media (max-width:860px){.traps{grid-template-columns:1fr;gap:18px}}
 
@@ -216,6 +221,7 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
 /* Para conectar en vivo (fuera de claude.ai, p. ej. GitHub Pages): pon aquí la URL del doGet de Apps Script
    que devuelva este mismo formato JSON. Si queda vacía, se usan los datos incluidos. */
 const SOURCE_URL = "https://script.google.com/macros/s/AKfycbzSwcaE7Ub0WUaKTNZZ8ZGf-tgdpu6wNEzCXjnzf9R4MX4jhHVCTgrhpjsI_A-S0sAT/exec";
+const LECTURAS_SEMANA = 2; // trampas: lunes y miércoles
 const SNAPSHOT = null;
 const SNAPSHOT_DATE = "";
 
@@ -425,31 +431,23 @@ function renderTraps(){
   const W={};rows.forEach(r=>{const k=wkKey(r.fecha);const w=(W[k]??={k,sem:r.semana||isoWeek(r.fecha).w,t:names.map(()=>0),n:0});r.t.forEach((v,i)=>w.t[i]+=(+v||0));w.n++});
   const weeks=Object.values(W).sort((a,b)=>a.k<b.k?-1:1);const cur=weeks.at(-1),prev=weeks.at(-2);
   const tot=w=>w.t.reduce((a,b)=>a+b,0);const T=tot(cur);
+  const avg=w=>tot(w)/Math.max(1,w.n);   // promedio por lectura: compara bien aunque falte una lectura
+  const LPS=LECTURAS_SEMANA;
   let delta="";
-  if(prev){const p=tot(prev),d=p?(T-p)/p:null;
+  if(prev){const p=avg(prev),d=p?(avg(cur)-p)/p:null;
     if(d!=null){const up=d>0.001;const k=up?col(Math.min(1,.45+d)):null;
-      delta=`<span class="delta" style="background:${up?k.bg:"var(--soft)"};color:${up?k.fg:"var(--ink)"}">${up?"Sube":"Baja"} ${Math.abs(Math.round(d*100))}% frente a la semana ${prev.sem}</span>`}}
+      delta=`<span class="delta" style="background:${up?k.bg:"var(--soft)"};color:${up?k.fg:"var(--ink)"}">${up?"Sube":"Baja"} ${Math.abs(Math.round(d*100))}% vs. semana ${prev.sem}</span>`}}
   else delta=`<p class="note">La comparación semanal aparece desde la segunda semana de lectura.</p>`;
   const mx=Math.max(...cur.t,1);
   const label=n=>n.replace(/_/g," ").replace(/^trampa/i,"Trampa");
-  const recent=weeks.slice(-8);const mT=Math.max(...recent.map(tot),1);
-  const H=110,bw=Math.min(34,260/recent.length-8);
-  let svg=`<svg viewBox="0 0 ${recent.length*(bw+10)} ${H+18}" width="100%" style="max-width:${recent.length*(bw+10)*1.6}px;max-height:150px" role="img" aria-label="Insectos por semana">`;
-  recent.forEach((w,i)=>{const h=Math.max(2,tot(w)/mT*H);const x=i*(bw+10);const last=i===recent.length-1;
-    svg+=`<rect x="${x}" y="${H-h}" width="${bw}" height="${h}" rx="4" fill="${last?"var(--gold)":"var(--soft)"}"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>Semana ${w.sem}: ${num(tot(w))} insectos</title></rect><text x="${x+bw/2}" y="${H+14}" font-size="10" fill="var(--muted)" text-anchor="middle">S${w.sem}</text>`});
-  svg+=`</svg>`;
+  const recent=weeks.slice(-8);const mA=Math.max(...recent.map(avg),1);
+  const svg=`<div class="wk" role="img" aria-label="Promedio de insectos por lectura, por semana">${recent.map((w,i)=>{const last=i===recent.length-1;
+    return `<div class="wkc" title="Semana ${w.sem}: ${num(tot(w))} insectos en ${w.n} lectura${w.n>1?"s":""}"><span class="wkv">${num(Math.round(avg(w)))}</span><span class="wkb" style="height:${Math.max(3,Math.round(avg(w)/mA*100))}px;background:${last?"var(--gold)":"var(--soft)"}${w.n<LPS?";opacity:.55":""}"></span><span class="wkl">Sem ${w.sem}${w.n<LPS?"*":""}</span></div>`}).join("")}</div>
+    <p class="note" style="font-size:12px">Promedio de insectos por lectura.${recent.some(w=>w.n<LPS)?` *Semana con menos de ${LPS} lecturas.`:""}</p>`;
   el.innerHTML=`<div><h2>Trampas de insectos</h2><p class="lbl" style="margin-top:2px">Semana ${cur.sem}, ${names.length} trampas a lo largo del cultivo</p>
-      <span class="big">${num(T)}</span><p class="note" style="margin:2px 0 0">insectos capturados${cur.n>1?` en ${cur.n} lecturas`:""}</p>${delta}</div>
+      <span class="big">${num(T)}</span><p class="note" style="margin:2px 0 0">insectos capturados, ${cur.n} de ${LPS} lecturas de la semana</p>${delta}</div>
     <div><p class="lbl">Por trampa</p>${names.map((n,i)=>`<div class="trow"><span>${esc(label(n))}</span><span class="bar"><i style="width:${cur.t[i]/mx*100}%"></i></span><span class="v">${num(cur.t[i])}</span></div>`).join("")}</div>
-    <div><p class="lbl">Evolución semanal</p>${svg}</div>`;
+    <div><p class="lbl">Evolución por semana</p>${svg}</div>`;
 }
 
 let lastFocus=null;
