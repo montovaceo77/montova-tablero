@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Montova · Tablero de cultivo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -520,15 +521,7 @@ function lineChart(keys,series,{fmt=v=>pct(v),min=0,isPct=true}={}){
   series.forEach(se=>{
     let d="",open=false;se.values.forEach((v,i)=>{if(v==null){open=false;return}d+=(open?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";open=true});
     s+=`<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    se.values.forEach((v,i)=>{if(v==null)return;const last=i===se.values.length-1;s+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${last?4.5:3}" fill="${se.color}"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>${esc(se.name)}, semana ${wkNum(keys[i])}: ${fmt(v)}</title></circle>`});
+    se.values.forEach((v,i)=>{if(v==null)return;const last=i===se.values.length-1;s+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${last?4.5:3}" fill="${se.color}"><title>${esc(se.name)}, semana ${wkNum(keys[i])}: ${fmt(v)}</title></circle>`});
   });
   return s+`</svg>`;
 }
@@ -684,42 +677,10 @@ function timeline(c,tw){
   for(let k=0;k<=span/7;k+=4){const xx=L+(k*7/span)*(W-L-R);s+=`<text x="${xx}" y="${H-4}" font-size="10" fill="var(--muted)" text-anchor="middle">${k}</text>`}
   const now=c.fin||todayStr;const nx=x(now);
   s+=`<line x1="${nx}" x2="${nx}" y1="10" y2="${H-16}" stroke="var(--blue)" stroke-dasharray="3 3"/><text x="${nx}" y="8" font-size="10" fill="var(--blue)" text-anchor="middle">${c.fin?"fin":"hoy"}</text>`;
-  if(c.prep)[c.prep.desinf,c.prep.app1,c.prep.app2].filter(Boolean).forEach(d=>{s+=`<rect x="${x(d)-4}" y="18" width="8" height="8" transform="rotate(45 ${x(d)} 22)" fill="var(--muted)"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>${fmt(d)}</title></rect>`});
-  c.abon.forEach(a=>{s+=`<circle cx="${x(a.fecha)}" cy="48" r="7" fill="var(--leaf)"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>${a.num||""} abonada, ${fmt(a.fecha)}</title></circle><text x="${x(a.fecha)}" y="51.5" font-size="9" fill="#173428" text-anchor="middle" font-weight="700">${(a.num||"").replace(/\D/g,"")}</text>`});
-  c.fum.forEach(f=>{const xx=x(f.fecha);s+=`<path d="M${xx} 67 L${xx+6} 79 L${xx-6} 79 Z" fill="#C98A2E"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>${fmt(f.fecha)}: ${esc(f.plagas||"")}</title></path>`});
-  c.monDates.forEach(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));s+=`<rect x="${x(d)-5}" y="95" width="10" height="10" rx="2" fill="${col(st.rate).bg}" stroke="var(--line)"><meta name="theme-color" content="#FCFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Montova">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
-<title>${fmt(d)}: ${pct(st.rate)}</title></rect>`});
+  if(c.prep)[c.prep.desinf,c.prep.app1,c.prep.app2].filter(Boolean).forEach(d=>{s+=`<rect x="${x(d)-4}" y="18" width="8" height="8" transform="rotate(45 ${x(d)} 22)" fill="var(--muted)"><title>${fmt(d)}</title></rect>`});
+  c.abon.forEach(a=>{s+=`<circle cx="${x(a.fecha)}" cy="48" r="7" fill="var(--leaf)"><title>${a.num||""} abonada, ${fmt(a.fecha)}</title></circle><text x="${x(a.fecha)}" y="51.5" font-size="9" fill="#173428" text-anchor="middle" font-weight="700">${(a.num||"").replace(/\D/g,"")}</text>`});
+  c.fum.forEach(f=>{const xx=x(f.fecha);s+=`<path d="M${xx} 67 L${xx+6} 79 L${xx-6} 79 Z" fill="#C98A2E"><title>${fmt(f.fecha)}: ${esc(f.plagas||"")}</title></path>`});
+  c.monDates.forEach(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));s+=`<rect x="${x(d)-5}" y="95" width="10" height="10" rx="2" fill="${col(st.rate).bg}" stroke="var(--line)"><title>${fmt(d)}: ${pct(st.rate)}</title></rect>`});
   s+=`<text x="0" y="${H-4}" font-size="10" fill="var(--muted)">Semana</text></svg>`;
   return s;
 }
