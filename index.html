@@ -633,14 +633,18 @@ function openLot(id,from){
   const names=["1era","2da","3era","4ta"];const extra=c.abon.filter(a=>!names.includes(a.num));
   const abHTML=`<span class="big">${c.abon.length}</span><div class="steps">${names.map(n=>{const a=c.abon.find(x=>x.num===n);return `<span class="${a?"done":""}" title="${a?esc(fmt(a.fecha)+": "+(a.prod||"")):"Pendiente"}">${n}</span>`}).join("")}</div><p class="note">${c.abon.length?"Última: "+fmt(c.abon.at(-1).fecha)+(c.abon.at(-1).prod?", "+esc(c.abon.at(-1).prod):""):"Sin abonadas registradas todavía."}${extra.length?" Además "+extra.length+" registro(s) sin número.":""}</p>`;
   // Sala
-  const salaT=c.sala.reduce((a,r)=>a+r.util,0),desT=c.sala.reduce((a,r)=>a+r.desc,0);
-  const porTipo={},motivos={};c.sala.forEach(r=>{if(r.util)porTipo[r.tipo||"Sin variedad"]=(porTipo[r.tipo||"Sin variedad"]||0)+r.util;if(r.desc)motivos[r.motivo||"Sin motivo"]=(motivos[r.motivo||"Sin motivo"]||0)+r.desc});
-  const tot=salaT+desT,dc=tot?col(desT/tot):null;
-  const salaHTML=c.sala.length?`<span class="big">${num(salaT)}</span><p class="note">tallos útiles, último ingreso el ${fmt(c.sala.at(-1).fecha)}</p>
-    <div style="margin-top:8px">${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}</div>
-    ${desT?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div style="display:flex;align-items:baseline;gap:8px"><span class="big" style="font-size:22px">${num(desT)}</span><span class="note" style="margin:0">tallos de descarte, ${pct(desT/tot)} de lo cosechado</span></div>
-      <div class="meter" style="margin:8px 0 8px"><i style="width:${desT/tot*100}%;background:${dc.bg}"></i></div>
-      ${Object.entries(motivos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}</div>`:`<p class="note">Sin descarte registrado.</p>`}`:`<p class="empty">Sin ingresos a sala registrados en este ciclo.</p>`;
+  c.sala.sort((x,y)=>x.fecha<y.fecha?-1:1);
+  const agg=rows=>{const o={u:0,d:0,tipo:{},mot:{}};rows.forEach(r=>{o.u+=r.util;o.d+=r.desc;if(r.util)o.tipo[r.tipo||"Sin variedad"]=(o.tipo[r.tipo||"Sin variedad"]||0)+r.util;if(r.desc)o.mot[r.motivo||"Sin motivo"]=(o.mot[r.motivo||"Sin motivo"]||0)+r.desc});return o};
+  const chips=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("");
+  const wkNow=wkKey(todayStr),wkN=isoWeek(todayStr).w;
+  const S=agg(c.sala),Wk=agg(c.sala.filter(r=>wkKey(r.fecha)===wkNow));
+  const block=(o,titulo,sub)=>{const tot=o.u+o.d;return `<p class="note" style="margin:0 0 2px;font-weight:600;color:var(--ink)">${titulo}</p>
+    <span class="big">${num(o.u)}</span><p class="note" style="margin-top:2px">${sub}</p>
+    ${o.u?`<div style="margin-top:6px">${chips(o.tipo)}</div>`:""}
+    ${o.d?`<p class="note">Descarte: <b style="color:var(--ink)">${num(o.d)}</b> (${pct(o.d/tot)})</p><div style="margin-top:4px">${chips(o.mot)}</div>`:(o.u?`<p class="note">Sin descarte.</p>`:"")}`};
+  const salaHTML=c.sala.length?`${block(Wk,`Esta semana (semana ${wkN})`,Wk.u||Wk.d?"tallos útiles":"Sin ingresos esta semana.")}
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">${block(S,"Acumulado del lote",`tallos útiles, último ingreso el ${fmt(c.sala.at(-1).fecha)}`)}
+    ${S.d?`<div class="meter" style="margin:8px 0 0"><i style="width:${S.d/(S.u+S.d)*100}%;background:${col(S.d/(S.u+S.d)).bg}"></i></div>`:""}</div>`:`<p class="empty">Sin ingresos a sala registrados en este ciclo.</p>`;
   // Preparación
   const p=c.prep;
   const prepHTML=p?`<ul class="list"><li><span class="dt">Picada</span>${fmt(p.picada)}</li><li><span class="dt">Desinfección</span>${fmt(p.desinf)}</li><li><span class="dt">Aplicación 1, ${fmt(p.app1)}</span>${esc(p.app1p||"—")}</li><li><span class="dt">Aplicación 2, ${fmt(p.app2)}</span>${esc(p.app2p||"—")}</li></ul>`:`<p class="empty">Sin registro de preparación de suelo.</p>`;
