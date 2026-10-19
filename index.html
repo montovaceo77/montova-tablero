@@ -144,6 +144,12 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .dp-panel{margin-bottom:16px}
 .chg td.r,.chg th.r{text-align:right}
 .chg tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.dl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.dl-btn{border:0;border-radius:999px;padding:9px 16px;font:600 13.5px var(--body);background:var(--gold);color:#173428;cursor:pointer}
+.dl-btn:disabled{opacity:.6;cursor:wait}
+.dl-t td{padding:8px 8px 8px 0}
+.dl-r:hover td{background:var(--soft)}
+.dl-d td{border-top:0;padding-top:0}
 .dsp{border-top:1px solid var(--line);padding:12px 0}
 .dsp:first-of-type{border-top:0;padding-top:4px}
 .dsp .row1{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
@@ -744,8 +750,10 @@ function timeline(c,tw){
 /* ---------- Despachos ---------- */
 state.dp={preset:"4s",desde:null,hasta:null,com:null,all:false};
 const addDays=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const esAnulado=r=>/anulad/i.test(r.comercializadora||"")||/anulad/i.test(r.nombre||"");
+function despAnulados(){return (RAW.despachos||[]).filter(r=>r.fecha&&r.finca===state.finca&&esAnulado(r))}
 function despRows(){
-  const all=RAW.despachos||[];const mp={};
+  const all=(RAW.despachos||[]).filter(r=>!esAnulado(r));const mp={};
   all.forEach(r=>{if(r.nombre){const k=(r.variedad||"")+"|"+(r.tipo||"");(mp[k]??={})[r.nombre]=(mp[k][r.nombre]||0)+1}});
   return all.filter(r=>r.fecha&&r.finca===state.finca&&(state.variedad==="Todas"||r.variedad===state.variedad)).map(r=>{
     let n=r.nombre,inf=false;
@@ -779,13 +787,15 @@ function renderDespachos(){
   const T=inR.reduce((s,r)=>s+r.q,0),P=prev.reduce((s,r)=>s+r.q,0);
   const ids=new Set(inR.map(r=>r.idDespacho||r.despacho+"|"+r.fecha));
   const ncs=new Set(inR.map(r=>r.nc));
+  const anul=new Set(despAnulados().filter(r=>r.fecha>=a&&r.fecha<=b).map(r=>r.idDespacho||r.despacho+"|"+r.fecha)).size;
   let delta="";
   if(P){const d=(T-P)/P;const up=d>=0;delta=`<span class="delta" style="background:var(--soft);color:var(--ink)">${up?"▲":"▼"} ${Math.abs(Math.round(d*100))}% vs. los ${len} días anteriores (${num(P)})</span>`}
   // Resumen + comercializadoras
   let h=`<div class="dp-top">
     <div class="panel"><h2>Tallos despachados</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">${fmt(a)} a ${fmt(b)}</p>
       <span class="big">${num(T)}</span><br>${delta}
-      <div class="dp-facts"><div><b>${ids.size}</b><span>despachos</span></div><div><b>${comList.length}</b><span>comercializadoras</span></div><div><b>${ncs.size}</b><span>productos</span></div></div></div>
+      <div class="dp-facts"><div><b>${ids.size}</b><span>despachos</span></div><div><b>${comList.length}</b><span>comercializadoras</span></div><div><b>${ncs.size}</b><span>productos</span></div></div>
+      ${anul?`<p class="note" style="font-size:12px;margin-top:12px">${anul===1?"1 despacho anulado no se tiene en cuenta":anul+" despachos anulados no se tienen en cuenta"}.</p>`:""}</div>
     <div class="panel"><h2>Por comercializadora</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Toca una para ver solo sus despachos.</p>
       ${comList.map(([k,v])=>`<button class="drow" data-c="${esc(k)}" aria-pressed="${state.dp.com===k}"><span>${esc(k)}</span><span class="bar"><i style="width:${v/comList[0][1]*100}%;background:${colOf[k]}"></i></span><span class="v">${num(v)}<small>${pct(v/T)}</small></span></button>`).join("")}
       ${state.dp.com?`<button class="more" id="dpClear">Ver todas las comercializadoras</button>`:""}</div>
@@ -810,18 +820,45 @@ function renderDespachos(){
   // Lista de despachos
   const G={};sel.forEach(r=>{const k=r.idDespacho||r.despacho+"|"+r.fecha;const g=(G[k]??={fecha:r.fecha,num:r.despacho||r.fito,com:r.comercializadora,lider:r.lider,items:{},t:0,nov:new Set()});g.items[r.nc]=(g.items[r.nc]||0)+r.q;g.t+=r.q;if(r.novedades)g.nov.add(r.novedades);if(r.lider&&!g.lider)g.lider=r.lider});
   const gl=Object.values(G).sort((x,y)=>x.fecha<y.fecha?1:x.fecha>y.fecha?-1:(String(y.num)>String(x.num)?1:-1));
-  const showN=state.dp.all?gl.length:8;
-  h+=`<div class="panel dp-panel"><h2>Despachos del rango</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">Del más reciente al más antiguo.</p>
-    ${gl.slice(0,showN).map(g=>`<div class="dsp"><div class="row1"><b>Despacho ${esc(g.num??"")}, ${esc(g.com||"")}</b><span class="q">${num(g.t)}</span></div>
-      <p class="meta">${fmt(g.fecha)}${g.lider?", sala: "+esc(g.lider):""}</p>
-      ${Object.entries(g.items).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}
-      ${g.nov.size?`<p class="nov">${[...g.nov].map(esc).join(". ")}</p>`:""}</div>`).join("")}
-    ${gl.length>8?`<button class="more" id="dpAll">${state.dp.all?"Ver solo los 8 más recientes":"Ver los "+gl.length+" despachos"}</button>`:""}</div>`;
+  h+=`<div class="panel dp-panel"><div class="dl-head"><div><h2>Detalle de despachos</h2>
+      <p class="hint" style="margin:2px 0 0;color:var(--muted);font-size:13px">${gl.length} despacho${gl.length===1?"":"s"}${state.dp.com?" de "+esc(state.dp.com):""}, del ${fmt(a)} al ${fmt(b)}.</p></div>
+      <button class="dl-btn" id="dpXls">Descargar Excel</button></div>
+    <button class="more" id="dpAll" aria-expanded="${state.dp.all}">${state.dp.all?"Ocultar la lista":"Ver la lista"}</button>
+    ${state.dp.all?`<div class="scroll" style="margin-top:8px"><table class="chg dl-t"><thead><tr><th>Fecha</th><th>Despacho</th><th>Comercializadora</th><th class="r">Tallos</th></tr></thead><tbody>
+      ${gl.map((g,i)=>`<tr class="dl-r" data-i="${i}" tabindex="0" style="cursor:pointer"><td>${fmtS(g.fecha)}</td><td>${esc(g.num??"")}</td><td>${esc(g.com||"")}</td><td class="r"><b>${num(g.t)}</b></td></tr>
+        <tr class="dl-d" data-d="${i}" hidden><td colspan="4">${Object.entries(g.items).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}${g.lider?`<p class="nov" style="font-style:normal">Sala: ${esc(g.lider)}</p>`:""}${g.nov.size?`<p class="nov">${[...g.nov].map(esc).join(". ")}</p>`:""}</td></tr>`).join("")}
+      </tbody></table></div><p class="note" style="font-size:12px">Toca un despacho para ver sus productos.</p>`:""}</div>`;
+  state.dp.export={a,b,rows:sel.slice().sort((x,y)=>x.fecha<y.fecha?-1:x.fecha>y.fecha?1:0),com:state.dp.com};
   body.innerHTML=h;
   body.querySelectorAll(".drow").forEach(x=>x.onclick=()=>{state.dp.com=state.dp.com===x.dataset.c?null:x.dataset.c;renderDespachos()});
   const cl=document.getElementById("dpClear");if(cl)cl.onclick=()=>{state.dp.com=null;renderDespachos()};
   const al=document.getElementById("dpAll");if(al)al.onclick=()=>{state.dp.all=!state.dp.all;renderDespachos()};
+  body.querySelectorAll(".dl-r").forEach(r=>{const tg=()=>{const d=body.querySelector(`[data-d="${r.dataset.i}"]`);d.hidden=!d.hidden};r.onclick=tg;r.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tg()}}});
+  const xb=document.getElementById("dpXls");if(xb)xb.onclick=()=>descargarDespachos(xb);
 }
+function cargarXLSX(){return new Promise((ok,ko)=>{if(window.XLSX)return ok();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>ok();s.onerror=ko;document.head.appendChild(s)})}
+async function descargarDespachos(btn){
+  const ex=state.dp.export;if(!ex||!ex.rows.length)return;
+  const det=ex.rows.map(r=>({"Fecha":r.fecha,"Despacho":(d=>/^\d+$/.test(d)?+d:d)(String(r.despacho||r.fito||"")),"Comercializadora":r.comercializadora||"","Finca":r.finca||"","Variedad":r.variedad||"","Tipo de flor":r.tipo||"","Nombre comercial":r.nc,"Cantidad":r.q,"Líder de sala":r.lider||"","Novedades":r.novedades||""}));
+  const res={};ex.rows.forEach(r=>{const k=r.nc+"|"+(r.comercializadora||"");(res[k]??={"Nombre comercial":r.nc,"Comercializadora":r.comercializadora||"","Tallos":0});res[k].Tallos+=r.q});
+  const resumen=Object.values(res).sort((x,y)=>x["Nombre comercial"]<y["Nombre comercial"]?-1:x["Nombre comercial"]>y["Nombre comercial"]?1:y.Tallos-x.Tallos);
+  const name=`Despachos_${state.finca.replace(/\s+/g,"_")}${ex.com?"_"+ex.com.replace(/\s+/g,"_"):""}_${ex.a}_a_${ex.b}`;
+  const txt=btn.textContent;btn.textContent="Preparando…";btn.disabled=true;
+  try{await cargarXLSX();
+    const wb=XLSX.utils.book_new();
+    const serial=s=>{const [y,m,d]=s.split("-").map(Number);return (Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5};
+    const s1=XLSX.utils.json_to_sheet(det.map(r=>({...r,"Fecha":serial(r.Fecha)})));
+    for(let i=0;i<det.length;i++){const c=s1["A"+(i+2)];if(c){c.t="n";c.z="dd/mm/yyyy"}}s1["!cols"]=[{wch:11},{wch:10},{wch:20},{wch:14},{wch:12},{wch:12},{wch:20},{wch:10},{wch:24},{wch:40}];
+    const s2=XLSX.utils.json_to_sheet(resumen);s2["!cols"]=[{wch:22},{wch:20},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,s1,"Detalle");XLSX.utils.book_append_sheet(wb,s2,"Resumen por producto");
+    XLSX.writeFile(wb,name+".xlsx");
+  }catch(e){ // sin conexión a la librería: CSV que Excel abre igual
+    const cols=Object.keys(det[0]);const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+    const csv="﻿"+[cols.map(q).join(";")].concat(det.map(r=>cols.map(c=>q(r[c])).join(";"))).join("\r\n");
+    const u=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const l=document.createElement("a");l.href=u;l.download=name+".csv";document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }finally{btn.textContent=txt;btn.disabled=false}
+}
+
 document.querySelectorAll("#dpPreset button").forEach(x=>x.onclick=()=>{state.dp.preset=x.dataset.p;renderDespachos()});
 ["dpDesde","dpHasta"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{state.dp.preset="custom";state.dp.desde=document.getElementById("dpDesde").value;state.dp.hasta=document.getElementById("dpHasta").value;renderDespachos()}));
 
