@@ -121,6 +121,44 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .scroll{overflow-x:auto}
 @media (max-width:860px){.charts{grid-template-columns:1fr}}
 
+/* Despachos */
+.dp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.dp-head .t{font:600 34px/1.1 var(--serif);color:var(--onpage);margin:0 0 4px}
+.dp-head .s{margin:0;color:var(--onpage-muted);font-size:14px}
+.dp-filter{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.dp-dates{display:flex;gap:8px;flex-wrap:wrap}
+.dp-dates label{font-size:12.5px;color:var(--onpage-muted);display:flex;align-items:center;gap:6px}
+.dp-dates input{font:500 13px var(--body);color:var(--onpage);background:var(--onpage-soft);border:1px solid var(--onpage-line);border-radius:999px;padding:6px 10px}
+.dp-top{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;margin-bottom:16px}
+.dp-top .big{font-size:44px}
+.dp-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+.dp-facts b{display:block;font:700 20px/1.1 var(--display)}
+.dp-facts span{font-size:12px;color:var(--muted)}
+.drow{display:grid;grid-template-columns:minmax(110px,150px) 1fr 76px;gap:10px;align-items:center;width:100%;border:0;background:transparent;padding:6px;margin:0 -6px;border-radius:10px;cursor:pointer;text-align:left;color:inherit;font-size:14px}
+.drow:hover,.drow[aria-pressed="true"]{background:var(--soft)}
+.drow .bar{height:9px;border-radius:999px;background:var(--soft);overflow:hidden}
+.drow[aria-pressed="true"] .bar{background:var(--surface)}
+.drow .bar i{display:block;height:100%;border-radius:999px}
+.drow .v{text-align:right;font-variant-numeric:tabular-nums}
+.drow .v small{display:block;color:var(--muted);font-size:11.5px}
+.dp-panel{margin-bottom:16px}
+.chg td.r,.chg th.r{text-align:right}
+.chg tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.dsp{border-top:1px solid var(--line);padding:12px 0}
+.dsp:first-of-type{border-top:0;padding-top:4px}
+.dsp .row1{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.dsp .row1 b{font-size:15px}
+.dsp .row1 .q{font:700 18px var(--display);font-variant-numeric:tabular-nums}
+.dsp .meta{font-size:12.5px;color:var(--muted);margin:2px 0 6px}
+.dsp .nov{font-size:12.5px;color:var(--muted);margin:6px 0 0;font-style:italic}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs button{white-space:nowrap}
+#dpPreset{flex-wrap:wrap;border-radius:18px}
+#dpPreset button{white-space:nowrap}
+@media (max-width:520px){.tabs button{margin-right:12px;font-size:14px}}
+@media (max-width:860px){.dp-top{grid-template-columns:1fr}.dp-filter{align-items:flex-start}}
+@media (max-width:520px){.dp-top .big{font-size:36px}}
+
 /* Mapa */
 .map-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
 .map-head .t{font:600 34px/1.1 var(--serif);letter-spacing:.01em;margin:0;color:var(--onpage)}
@@ -213,6 +251,7 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
   <nav class="tabs" id="tabs" role="tablist">
     <button role="tab" data-v="resumen" aria-selected="true">Resumen</button>
     <button role="tab" data-v="semanas" aria-selected="false">Semana a semana</button>
+    <button role="tab" data-v="despachos" aria-selected="false">Despachos</button>
   </nav>
 
   <div id="viewResumen">
@@ -253,6 +292,19 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
     <section class="wk-head" id="wkHead"></section>
     <section class="charts" id="charts"></section>
     <section class="panel" id="lotChanges"></section>
+  </div>
+
+  <div id="viewDespachos" hidden>
+    <section class="dp-head">
+      <div><h2 class="t">Despachos</h2><p class="s" id="dpRango"></p></div>
+      <div class="dp-filter">
+        <div class="seg" id="dpPreset" role="group" aria-label="Rango de fechas">
+          <button data-p="sem">Esta semana</button><button data-p="4s">Últimas 4 semanas</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button>
+        </div>
+        <div class="dp-dates"><label>Desde <input type="date" id="dpDesde"></label><label>Hasta <input type="date" id="dpHasta"></label></div>
+      </div>
+    </section>
+    <div id="dpBody"></div>
   </div>
 
   <details class="dq" id="dq"></details>
@@ -466,7 +518,7 @@ function render(){
   if(rep.length)dq.push(`${rep.length===1?"Una cama aparece":rep.length+" camas aparecen"} dos veces el mismo día en Monitoreo; se usa el último registro: ${rep.map(r=>`${r.lote}, cama ${r.cama}, ${fmt(r.fecha)}`).join("; ")}.`);
   if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
   const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
-  renderWeeks();
+  renderWeeks();renderDespachos();
   dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
 }
 
@@ -507,8 +559,8 @@ function computeAlerts(cs,S){
 
 function niceMax(v,isPct){if(isPct){const c=[.1,.2,.3,.4,.5,.6,.8,1];return c.find(x=>x>=v*1.05)||1}
   const e=Math.pow(10,Math.floor(Math.log10(Math.max(v,1))));for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]){if(m*e>=v*1.08)return m*e}return 10*e}
-function lineChart(keys,series,{fmt=v=>pct(v),min=0,isPct=true}={}){
-  const sm=window.innerWidth<600;const W=sm?340:520,H=sm?200:190,L=42,R=28,T=14,B=26;
+function lineChart(keys,series,{fmt=v=>pct(v),min=0,isPct=true,wide=false}={}){
+  const sm=window.innerWidth<600;const W=sm?340:(wide?1000:520),H=sm?200:(wide?250:190),L=42,R=28,T=14,B=26;
   const vals=series.flatMap(s=>s.values.filter(v=>v!=null));
   const hi=niceMax(Math.max(...vals,isPct?.05:1),isPct);
   const X=i=>keys.length<2?L+(W-L-R)/2:L+i*(W-L-R)/(keys.length-1);
@@ -689,9 +741,93 @@ function timeline(c,tw){
   return s;
 }
 
+/* ---------- Despachos ---------- */
+state.dp={preset:"4s",desde:null,hasta:null,com:null,all:false};
+const addDays=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function despRows(){
+  const all=RAW.despachos||[];const mp={};
+  all.forEach(r=>{if(r.nombre){const k=(r.variedad||"")+"|"+(r.tipo||"");(mp[k]??={})[r.nombre]=(mp[k][r.nombre]||0)+1}});
+  return all.filter(r=>r.fecha&&r.finca===state.finca&&(state.variedad==="Todas"||r.variedad===state.variedad)).map(r=>{
+    let n=r.nombre,inf=false;
+    if(!n){const m=mp[(r.variedad||"")+"|"+(r.tipo||"")];n=m?Object.entries(m).sort((a,b)=>b[1]-a[1])[0][0]:[r.variedad,r.tipo].filter(Boolean).join(" ")||"Sin nombre";inf=true}
+    return {...r,nc:n,inf,q:+r.cantidad||0}});
+}
+function dpRange(rows){
+  const p=state.dp.preset,hoy=todayStr;
+  if(p==="sem"){const d=D(hoy);const w=(d.getDay()+6)%7;return [addDays(hoy,-w),hoy]}
+  if(p==="4s")return [addDays(hoy,-27),hoy];
+  if(p==="mes")return [hoy.slice(0,8)+"01",hoy];
+  if(p==="todo"){const f=rows.map(r=>r.fecha).sort();return f.length?[f[0],f.at(-1)]:[hoy,hoy]}
+  return [state.dp.desde||hoy,state.dp.hasta||hoy];
+}
+function renderDespachos(){
+  const body=document.getElementById("dpBody");if(!body)return;
+  const all=despRows();let [a,b]=dpRange(all);if(a>b)[a,b]=[b,a];
+  document.getElementById("dpDesde").value=a;document.getElementById("dpHasta").value=b;
+  document.querySelectorAll("#dpPreset button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===state.dp.preset));
+  document.getElementById("dpRango").textContent=`${state.finca}, del ${fmt(a)} al ${fmt(b)}`;
+  const inR=all.filter(r=>r.fecha>=a&&r.fecha<=b);
+  if(!all.length){body.innerHTML=`<p class="ok">Todavía no hay despachos registrados para ${esc(state.finca)}.</p>`;return}
+  if(!inR.length){body.innerHTML=`<p class="ok">No hay despachos entre el ${fmt(a)} y el ${fmt(b)}. Prueba con otro rango.</p>`;return}
+  const len=days(a,b)+1,pa=addDays(a,-len),pb=addDays(a,-1);
+  const prev=all.filter(r=>r.fecha>=pa&&r.fecha<=pb);
+  const coms={};inR.forEach(r=>coms[r.comercializadora||"Sin comercializadora"]=(coms[r.comercializadora||"Sin comercializadora"]||0)+r.q);
+  const comList=Object.entries(coms).sort((x,y)=>y[1]-x[1]);
+  if(state.dp.com&&!coms[state.dp.com])state.dp.com=null;
+  const colOf={};comList.forEach(([k],i)=>colOf[k]=SERIES_COL[(i+1)%SERIES_COL.length]);
+  const sel=state.dp.com?inR.filter(r=>(r.comercializadora||"Sin comercializadora")===state.dp.com):inR;
+  const T=inR.reduce((s,r)=>s+r.q,0),P=prev.reduce((s,r)=>s+r.q,0);
+  const ids=new Set(inR.map(r=>r.idDespacho||r.despacho+"|"+r.fecha));
+  const ncs=new Set(inR.map(r=>r.nc));
+  let delta="";
+  if(P){const d=(T-P)/P;const up=d>=0;delta=`<span class="delta" style="background:var(--soft);color:var(--ink)">${up?"▲":"▼"} ${Math.abs(Math.round(d*100))}% vs. los ${len} días anteriores (${num(P)})</span>`}
+  // Resumen + comercializadoras
+  let h=`<div class="dp-top">
+    <div class="panel"><h2>Tallos despachados</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">${fmt(a)} a ${fmt(b)}</p>
+      <span class="big">${num(T)}</span><br>${delta}
+      <div class="dp-facts"><div><b>${ids.size}</b><span>despachos</span></div><div><b>${comList.length}</b><span>comercializadoras</span></div><div><b>${ncs.size}</b><span>productos</span></div></div></div>
+    <div class="panel"><h2>Por comercializadora</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Toca una para ver solo sus despachos.</p>
+      ${comList.map(([k,v])=>`<button class="drow" data-c="${esc(k)}" aria-pressed="${state.dp.com===k}"><span>${esc(k)}</span><span class="bar"><i style="width:${v/comList[0][1]*100}%;background:${colOf[k]}"></i></span><span class="v">${num(v)}<small>${pct(v/T)}</small></span></button>`).join("")}
+      ${state.dp.com?`<button class="more" id="dpClear">Ver todas las comercializadoras</button>`:""}</div>
+  </div>`;
+  // Gráfica semanal
+  const wEnd=wkKey(b),wk=[];for(let d=a;;d=addDays(d,7)){const k=wkKey(d);if(!wk.includes(k))wk.push(k);if(k>=wEnd||wk.length>120)break}if(!wk.includes(wEnd))wk.push(wEnd);
+  const byW={};inR.forEach(r=>{const k=wkKey(r.fecha);(byW[k]??={_t:0});byW[k]._t+=r.q;const c=r.comercializadora||"Sin comercializadora";byW[k][c]=(byW[k][c]||0)+r.q});
+  const series=[{name:"Total",color:SERIES_COL[0],values:wk.map(k=>byW[k]?byW[k]._t:0)}].concat(comList.slice(0,5).map(([k])=>({name:k,color:colOf[k],values:wk.map(x=>byW[x]?(byW[x][k]||0):0)})));
+  h+=`<div class="panel chart dp-panel"><h3>Tallos despachados por semana</h3><p class="cap">Total y por comercializadora.</p>
+    ${wk.length>1?lineChart(wk,series,{fmt:x=>num(Math.round(x)),isPct:false,wide:true}):`<p class="empty">Elige un rango de más de una semana para ver la evolución.</p>`}
+    <div class="lg">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)} ${num(s.values.reduce((x,y)=>x+y,0))}</span>`).join("")}</div></div>`;
+  // Por nombre comercial
+  const cols=state.dp.com?[state.dp.com]:comList.map(x=>x[0]);
+  const nm={};sel.forEach(r=>{const c=r.comercializadora||"Sin comercializadora";(nm[r.nc]??={_t:0,_inf:false});nm[r.nc]._t+=r.q;nm[r.nc][c]=(nm[r.nc][c]||0)+r.q;if(r.inf)nm[r.nc]._inf=true});
+  const nmList=Object.entries(nm).sort((x,y)=>y[1]._t-x[1]._t);const ST=sel.reduce((s,r)=>s+r.q,0);
+  const anyInf=nmList.some(x=>x[1]._inf);
+  h+=`<div class="panel dp-panel"><h2>Por nombre comercial</h2><p class="hint" style="margin:2px 0 12px;color:var(--muted);font-size:13px">${state.dp.com?esc(state.dp.com)+". ":""}Tallos de cada producto en el rango.</p>
+    <div class="scroll"><table class="chg"><thead><tr><th>Producto</th>${cols.length>1?cols.map(c=>`<th class="r">${esc(c)}</th>`).join(""):""}<th class="r">Total</th><th class="r">%</th></tr></thead>
+    <tbody>${nmList.map(([k,o])=>`<tr><td>${esc(k)}${o._inf?"*":""}</td>${cols.length>1?cols.map(c=>`<td class="r">${o[c]?num(o[c]):"—"}</td>`).join(""):""}<td class="r"><b>${num(o._t)}</b></td><td class="r">${pct(o._t/ST)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>Total</td>${cols.length>1?cols.map(c=>`<td class="r">${num(sel.filter(r=>(r.comercializadora||"Sin comercializadora")===c).reduce((s,r)=>s+r.q,0))}</td>`).join(""):""}<td class="r">${num(ST)}</td><td class="r">100%</td></tr></tfoot></table></div>
+    ${anyInf?`<p class="note" style="font-size:12px">*Incluye registros sin nombre comercial; se asignó el nombre que se usa para esa variedad y tipo de flor.</p>`:""}</div>`;
+  // Lista de despachos
+  const G={};sel.forEach(r=>{const k=r.idDespacho||r.despacho+"|"+r.fecha;const g=(G[k]??={fecha:r.fecha,num:r.despacho||r.fito,com:r.comercializadora,lider:r.lider,items:{},t:0,nov:new Set()});g.items[r.nc]=(g.items[r.nc]||0)+r.q;g.t+=r.q;if(r.novedades)g.nov.add(r.novedades);if(r.lider&&!g.lider)g.lider=r.lider});
+  const gl=Object.values(G).sort((x,y)=>x.fecha<y.fecha?1:x.fecha>y.fecha?-1:(String(y.num)>String(x.num)?1:-1));
+  const showN=state.dp.all?gl.length:8;
+  h+=`<div class="panel dp-panel"><h2>Despachos del rango</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">Del más reciente al más antiguo.</p>
+    ${gl.slice(0,showN).map(g=>`<div class="dsp"><div class="row1"><b>Despacho ${esc(g.num??"")}, ${esc(g.com||"")}</b><span class="q">${num(g.t)}</span></div>
+      <p class="meta">${fmt(g.fecha)}${g.lider?", sala: "+esc(g.lider):""}</p>
+      ${Object.entries(g.items).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}
+      ${g.nov.size?`<p class="nov">${[...g.nov].map(esc).join(". ")}</p>`:""}</div>`).join("")}
+    ${gl.length>8?`<button class="more" id="dpAll">${state.dp.all?"Ver solo los 8 más recientes":"Ver los "+gl.length+" despachos"}</button>`:""}</div>`;
+  body.innerHTML=h;
+  body.querySelectorAll(".drow").forEach(x=>x.onclick=()=>{state.dp.com=state.dp.com===x.dataset.c?null:x.dataset.c;renderDespachos()});
+  const cl=document.getElementById("dpClear");if(cl)cl.onclick=()=>{state.dp.com=null;renderDespachos()};
+  const al=document.getElementById("dpAll");if(al)al.onclick=()=>{state.dp.all=!state.dp.all;renderDespachos()};
+}
+document.querySelectorAll("#dpPreset button").forEach(x=>x.onclick=()=>{state.dp.preset=x.dataset.p;renderDespachos()});
+["dpDesde","dpHasta"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{state.dp.preset="custom";state.dp.desde=document.getElementById("dpDesde").value;state.dp.hasta=document.getElementById("dpHasta").value;renderDespachos()}));
+
 function setView(v){state.view=v;document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
-  document.getElementById("viewResumen").hidden=v!=="resumen";document.getElementById("viewSemanas").hidden=v!=="semanas";
-  try{const u=new URL(location.href);if(v==="semanas")u.searchParams.set("vista","semanas");else u.searchParams.delete("vista");history.replaceState(null,"",u)}catch(e){}}
+  document.getElementById("viewResumen").hidden=v!=="resumen";document.getElementById("viewSemanas").hidden=v!=="semanas";document.getElementById("viewDespachos").hidden=v!=="despachos";
+  try{const u=new URL(location.href);if(v!=="resumen")u.searchParams.set("vista",v);else u.searchParams.delete("vista");history.replaceState(null,"",u)}catch(e){}}
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 function controls(){
   const fincas=[...new Set(M.cycles.map(c=>c.finca))];
@@ -714,7 +850,7 @@ async function init(){
       const u=RAW.actualizado?new Date(RAW.actualizado):new Date();DATA_AT=u.getDate()+" "+MES[u.getMonth()]+", "+u.toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});}
     catch(e){if(!RAW){document.getElementById("global").innerHTML=`<h2>No se pudo cargar la información</h2><p class="sub" style="margin-top:8px">Revisa la conexión a internet y vuelve a abrir el tablero. Si el problema sigue, la hoja de cálculo o el enlace de Apps Script cambió (${esc(e.message)}).</p>`;return}}
   }
-  M=build(RAW);controls();render();setView(new URLSearchParams(location.search).get("vista")==="semanas"?"semanas":"resumen");
+  M=build(RAW);controls();render();{const vq=new URLSearchParams(location.search).get("vista");setView(["semanas","despachos"].includes(vq)?vq:"resumen");}
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&SOURCE_URL&&Date.now()-loadedAt>10*60e3)location.reload()});
 }
