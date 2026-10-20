@@ -144,6 +144,13 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .dp-panel{margin-bottom:16px}
 .chg td.r,.chg th.r{text-align:right}
 .chg tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.bal-d summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bal-d summary::-webkit-details-marker{display:none}
+.bal-d summary::after{content:"Ver";margin-left:auto;font-size:13px;font-weight:600;color:var(--gold)}
+.bal-d[open] summary::after{content:"Ocultar"}
+.bal-d .bt{font:600 17px/1.2 var(--display)}
+.bal-d .bs{font-size:13px;color:var(--muted)}
+.bal-d[open] summary{margin-bottom:6px}
 .bal{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .bal div{background:var(--soft);border-radius:12px;padding:10px 12px}
 .bal span{display:block;font-size:12px;color:var(--muted)}
@@ -812,7 +819,6 @@ function renderDespachos(){
       ${comList.map(([k,v])=>`<button class="drow" data-c="${esc(k)}" aria-pressed="${state.dp.com===k}"><span>${esc(k)}</span><span class="bar"><i style="width:${v/comList[0][1]*100}%;background:${colOf[k]}"></i></span><span class="v">${num(v)}<small>${pct(v/T)}</small></span></button>`).join("")}
       ${state.dp.com?`<button class="more" id="dpClear">Ver todas las comercializadoras</button>`:""}</div>
   </div>`;
-  h+=balanceSala(a,b);
   // Gráfica semanal
   const wEnd=wkKey(b),wk=[];for(let d=a;;d=addDays(d,7)){const k=wkKey(d);if(!wk.includes(k))wk.push(k);if(k>=wEnd||wk.length>120)break}if(!wk.includes(wEnd))wk.push(wEnd);
   const byW={};inR.forEach(r=>{const k=wkKey(r.fecha);(byW[k]??={_t:0});byW[k]._t+=r.q;const c=r.comercializadora||"Sin comercializadora";byW[k][c]=(byW[k][c]||0)+r.q});
@@ -841,10 +847,12 @@ function renderDespachos(){
       ${gl.map((g,i)=>`<tr class="dl-r" data-i="${i}" tabindex="0" style="cursor:pointer"><td>${fmtS(g.fecha)}</td><td>${esc(g.num??"")}</td><td>${esc(g.com||"")}</td><td class="r"><b>${num(g.t)}</b></td></tr>
         <tr class="dl-d" data-d="${i}" hidden><td colspan="4">${Object.entries(g.items).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}${g.lider?`<p class="nov" style="font-style:normal">Sala: ${esc(g.lider)}</p>`:""}${g.nov.size?`<p class="nov">${[...g.nov].map(esc).join(". ")}</p>`:""}</td></tr>`).join("")}
       </tbody></table></div><p class="note" style="font-size:12px">Toca un despacho para ver sus productos.</p>`:""}</div>`;
+  h+=balanceSala(a,b);
   state.dp.export={a,b,rows:sel.slice().sort((x,y)=>x.fecha<y.fecha?-1:x.fecha>y.fecha?1:0),com:state.dp.com};
   body.innerHTML=h;
   body.querySelectorAll(".drow").forEach(x=>x.onclick=()=>{state.dp.com=state.dp.com===x.dataset.c?null:x.dataset.c;renderDespachos()});
   const cl=document.getElementById("dpClear");if(cl)cl.onclick=()=>{state.dp.com=null;renderDespachos()};
+  const bd=document.getElementById("balD");if(bd)bd.addEventListener("toggle",()=>{state.dp.balOpen=bd.open});
   const al=document.getElementById("dpAll");if(al)al.onclick=()=>{state.dp.all=!state.dp.all;renderDespachos()};
   body.querySelectorAll(".dl-r").forEach(r=>{const tg=()=>{const d=body.querySelector(`[data-d="${r.dataset.i}"]`);d.hidden=!d.hidden};r.onclick=tg;r.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tg()}}});
   const xb=document.getElementById("dpXls");if(xb)xb.onclick=()=>descargarDespachos(xb);
@@ -854,7 +862,7 @@ const DIAS_MAX_SALA=7;
 function tipoStd(s){const k=String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();if(!k)return "Sin tipo";if(k.startsWith("selec"))return "Select";return k.charAt(0).toUpperCase()+k.slice(1)}
 function balanceSala(a,b){
   const ent=[];M.cycles.filter(c=>c.finca===state.finca&&(state.variedad==="Todas"||c.variedad===state.variedad)).forEach(c=>c.sala.forEach(r=>{if(r.util)ent.push({fecha:r.fecha,k:c.variedad||"Sin variedad",det:tipoStd(r.tipo),q:r.util});if(r.desc)ent.push({fecha:r.fecha,k:null,d:r.desc})}));
-  if(!ent.length)return `<div class="panel dp-panel"><h2>Balance de sala</h2><p class="note">Aparece cuando haya ingresos a sala registrados para ${esc(state.finca)}.</p></div>`;
+  if(!ent.length)return `<details class="panel dp-panel bal-d" id="balD"${state.dp.balOpen?" open":""}><summary><span class="bt">Balance de sala</span><span class="bs">Sin ingresos a sala</span></summary><p class="note">Aparece cuando haya ingresos a sala registrados para ${esc(state.finca)}.</p></details>`;
   const ini=ent.map(r=>r.fecha).sort()[0];
   const vf={};M.cycles.filter(c=>c.finca===state.finca).forEach(c=>vf[c.variedad]=1);
   /* Solo se cuadran variedades con lotes en esta finca; las demás (tallos que salen distinto en un lote) son extras */
@@ -886,7 +894,7 @@ function balanceSala(a,b){
   const lv=wks.map(k=>{const e=endOf(k);if(e<ini||e>fin)return null;return sum(ent.filter(r=>r.k&&r.fecha<=e&&r.fecha>addDays(e,-DIAS_MAX_SALA)),r=>r.q)});
   const chart=sv.filter(x=>x!=null).length>1?`<div style="margin-top:14px">${lineChart(wks,[{name:"En cuarto frío",color:SERIES_COL[0],values:sv},{name:`Entró en los últimos ${DIAS_MAX_SALA} días`,color:SERIES_COL[3],values:lv}],{fmt:x=>num(Math.round(x)),isPct:false,wide:true})}
     <div class="lg"><span><i style="background:${SERIES_COL[0]}"></i>En cuarto frío al cierre de cada semana</span><span><i style="background:${SERIES_COL[3]}"></i>Lo que entró en los últimos ${DIAS_MAX_SALA} días (máximo razonable)</span></div></div>`:"";
-  return `<div class="panel dp-panel"><h2>Balance de sala</h2>
+  return `<details class="panel dp-panel bal-d" id="balD"${state.dp.balOpen?" open":""}><summary><span class="bt">Balance de sala</span><span class="st" style="--c:${sc[stT]}">${lbl[stT]}</span><span class="bs">${num(saldoT)} tallos en cuarto frío</span></summary>
     <p class="hint" style="margin:2px 0 12px;color:var(--muted);font-size:13px">Lo que entra útil a sala menos lo que se despacha. Se cuenta desde el primer ingreso registrado (${fmt(ini)}).</p>
     <div class="bal">
       <div><span>Entró a sala</span><b>${num(E+X)}</b></div><div><span>Descarte</span><b>${num(X)}</b></div><div><span>Entró útil</span><b>${num(E)}</b></div><div><span>Despachado</span><b>${num(S)}</b></div>
@@ -899,7 +907,7 @@ function balanceSala(a,b){
     ${rows.map(r=>`<tr><td>${esc(r.v)}</td><td class="r">${num(r.eR)}</td><td class="r">${num(r.dR)}</td><td class="r"><b${r.st!=="ok"?` style="color:${r.st==="neg"?"#FFB4B4":"#E8C28F"}"`:""}>${num(r.saldo)}</b></td><td class="est"><span class="st" style="--c:${sc[r.st]}">${lbl[r.st]}</span></td></tr>
       <tr class="bd"><td colspan="5">${r.de?`<span>Entró: ${r.de}</span>`:""}${r.dd?`<span>Despachado: ${r.dd}</span>`:""}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="note" style="font-size:12px">Entró útil y Despachado corresponden al rango elegido. En cuarto frío es el saldo acumulado a ${fmt(fin)}. El balance incluye todas las comercializadoras.</p></div>`;
+    <p class="note" style="font-size:12px">Entró útil y Despachado corresponden al rango elegido. En cuarto frío es el saldo acumulado a ${fmt(fin)}. El balance incluye todas las comercializadoras.</p></details>`;
 }
 
 function cargarXLSX(){return new Promise((ok,ko)=>{if(window.XLSX)return ok();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>ok();s.onerror=ko;document.head.appendChild(s)})}
