@@ -878,6 +878,16 @@ function controls(){
   document.querySelectorAll("#sortSeg button").forEach(b=>b.onclick=()=>{state.sort=b.dataset.s;document.querySelectorAll("#sortSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
 }
 
+/* Unifica los nombres de finca: "Flor de agua 3", "flor de Agua 3 " y "Flor de Agua 3" son la misma finca */
+function unificarFincas(raw){
+  const k=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+  const canon={};(raw.lotes||[]).forEach(r=>{if(r.finca&&!canon[k(r.finca)])canon[k(r.finca)]=r.finca.trim()});
+  Object.values(raw).forEach(arr=>{if(Array.isArray(arr))arr.forEach(r=>{
+    if(Array.isArray(r)){if(r[2]){r[2]=canon[k(r[2])]??(canon[k(r[2])]=String(r[2]).trim())}}
+    else if(r&&r.finca){r.finca=canon[k(r.finca)]??(canon[k(r.finca)]=String(r.finca).trim())}})});
+  return raw;
+}
+
 async function init(){
   RAW=SNAPSHOT;DATA_AT=SNAPSHOT_DATE?fmt(SNAPSHOT_DATE):"";
   if(!SOURCE_URL&&!RAW){document.getElementById("global").innerHTML=`<h2>Falta configurar el enlace de datos</h2><p class="sub" style="margin-top:8px">Pega la URL de Apps Script en SOURCE_URL, dentro de index.html.</p>`;return}
@@ -887,7 +897,7 @@ async function init(){
       const u=RAW.actualizado?new Date(RAW.actualizado):new Date();DATA_AT=u.getDate()+" "+MES[u.getMonth()]+", "+u.toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});}
     catch(e){if(!RAW){document.getElementById("global").innerHTML=`<h2>No se pudo cargar la información</h2><p class="sub" style="margin-top:8px">Revisa la conexión a internet y vuelve a abrir el tablero. Si el problema sigue, la hoja de cálculo o el enlace de Apps Script cambió (${esc(e.message)}).</p>`;return}}
   }
-  M=build(RAW);controls();render();{const vq=new URLSearchParams(location.search).get("vista");setView(["semanas","despachos"].includes(vq)?vq:"resumen");}
+  unificarFincas(RAW);M=build(RAW);controls();render();{const vq=new URLSearchParams(location.search).get("vista");setView(["semanas","despachos"].includes(vq)?vq:"resumen");}
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&SOURCE_URL&&Date.now()-loadedAt>10*60e3)location.reload()});
 }
