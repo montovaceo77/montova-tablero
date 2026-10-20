@@ -144,6 +144,17 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .dp-panel{margin-bottom:16px}
 .chg td.r,.chg th.r{text-align:right}
 .chg tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.bal{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.bal div{background:var(--soft);border-radius:12px;padding:10px 12px}
+.bal span{display:block;font-size:12px;color:var(--muted)}
+.bal b{font:700 22px/1.2 var(--display);font-variant-numeric:tabular-nums}
+.bal .hl{box-shadow:inset 0 0 0 2px var(--c)}
+.balmsg{margin:12px 0 0;font-size:14px;border-left:4px solid var(--c);padding:4px 0 4px 12px}
+.chg tr.bd td{border-top:0;padding-top:0;font-size:12px;color:var(--muted)}
+.chg tr.bd span{display:block}
+.st{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--soft);box-shadow:inset 0 0 0 1.5px var(--c);white-space:nowrap}
+@media (max-width:520px){.est{display:none}}
+@media (max-width:860px){.bal{grid-template-columns:repeat(2,1fr)}.bal .hl{grid-column:1/-1}}
 .dl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .dl-btn{border:0;border-radius:999px;padding:9px 16px;font:600 13.5px var(--body);background:var(--gold);color:#173428;cursor:pointer}
 .dl-btn:disabled{opacity:.6;cursor:wait}
@@ -688,8 +699,9 @@ function openLot(id,from){
   const plagasF={};c.fum.forEach(f=>f.plagasL.forEach(p=>plagasF[p]=(plagasF[p]||0)+1));
   const fumHTML=c.fum.length?`<span class="big">${c.fum.length}</span><p class="note">Contra: ${Object.entries(plagasF).map(([k,v])=>`${esc(k)}${v>1?" ("+v+")":""}`).join(", ")}</p><ul class="list" style="margin-top:10px">${c.fum.map(f=>`<li><span class="dt">${fmt(f.fecha)}</span>${esc(f.productos||"")}${f.fert?" + "+esc(f.fert):""}</li>`).join("")}</ul>`:`<span class="big">0</span><p class="note">Sin fumigaciones registradas en este ciclo.</p>`;
   // Abonadas
-  const names=["1era","2da","3era","4ta"];const extra=c.abon.filter(a=>!names.includes(a.num));
-  const abHTML=`<span class="big">${c.abon.length}</span><div class="steps">${names.map(n=>{const a=c.abon.find(x=>x.num===n);return `<span class="${a?"done":""}" title="${a?esc(fmt(a.fecha)+": "+(a.prod||"")):"Pendiente"}">${n}</span>`}).join("")}</div><p class="note">${c.abon.length?"Última: "+fmt(c.abon.at(-1).fecha)+(c.abon.at(-1).prod?", "+esc(c.abon.at(-1).prod):""):"Sin abonadas registradas todavía."}${extra.length?" Además "+extra.length+" registro(s) sin número.":""}</p>`;
+  const names=["1era","2da","3era","4ta","5ta"];const nAb=s=>parseInt(String(s||"").replace(/\D/g,""))||0;
+  const extra=c.abon.filter(a=>!(nAb(a.num)>=1&&nAb(a.num)<=names.length));
+  const abHTML=`<span class="big">${c.abon.length}</span><div class="steps">${names.map((n,i)=>{const a=c.abon.find(x=>nAb(x.num)===i+1);const opc=i===4&&!a;return `<span class="${a?"done":""}" title="${a?esc(fmt(a.fecha)+": "+(a.prod||"")):opc?"Opcional, no todos los lotes la llevan":"Pendiente"}"${opc?' style="opacity:.55;background:transparent;box-shadow:inset 0 0 0 1.5px var(--soft)"':""}>${n}</span>`}).join("")}</div><p class="note">${c.abon.length?"Última: "+fmt(c.abon.at(-1).fecha)+(c.abon.at(-1).prod?", "+esc(c.abon.at(-1).prod):""):"Sin abonadas registradas todavía."}${extra.length?" Además "+extra.length+" registro(s) sin número.":""}</p>`;
   // Sala
   c.sala.sort((x,y)=>x.fecha<y.fecha?-1:1);
   const agg=rows=>{const o={u:0,d:0,tipo:{},mot:{}};rows.forEach(r=>{o.u+=r.util;o.d+=r.desc;if(r.util)o.tipo[r.tipo||"Sin variedad"]=(o.tipo[r.tipo||"Sin variedad"]||0)+r.util;if(r.desc)o.mot[r.motivo||"Sin motivo"]=(o.mot[r.motivo||"Sin motivo"]||0)+r.desc});return o};
@@ -800,6 +812,7 @@ function renderDespachos(){
       ${comList.map(([k,v])=>`<button class="drow" data-c="${esc(k)}" aria-pressed="${state.dp.com===k}"><span>${esc(k)}</span><span class="bar"><i style="width:${v/comList[0][1]*100}%;background:${colOf[k]}"></i></span><span class="v">${num(v)}<small>${pct(v/T)}</small></span></button>`).join("")}
       ${state.dp.com?`<button class="more" id="dpClear">Ver todas las comercializadoras</button>`:""}</div>
   </div>`;
+  h+=balanceSala(a,b);
   // Gráfica semanal
   const wEnd=wkKey(b),wk=[];for(let d=a;;d=addDays(d,7)){const k=wkKey(d);if(!wk.includes(k))wk.push(k);if(k>=wEnd||wk.length>120)break}if(!wk.includes(wEnd))wk.push(wEnd);
   const byW={};inR.forEach(r=>{const k=wkKey(r.fecha);(byW[k]??={_t:0});byW[k]._t+=r.q;const c=r.comercializadora||"Sin comercializadora";byW[k][c]=(byW[k][c]||0)+r.q});
@@ -836,6 +849,59 @@ function renderDespachos(){
   body.querySelectorAll(".dl-r").forEach(r=>{const tg=()=>{const d=body.querySelector(`[data-d="${r.dataset.i}"]`);d.hidden=!d.hidden};r.onclick=tg;r.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tg()}}});
   const xb=document.getElementById("dpXls");if(xb)xb.onclick=()=>descargarDespachos(xb);
 }
+/* ---------- Balance de sala: lo que entra útil vs. lo que se despacha ---------- */
+const DIAS_MAX_SALA=7;
+function tipoStd(s){const k=String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();if(!k)return "Sin tipo";if(k.startsWith("selec"))return "Select";return k.charAt(0).toUpperCase()+k.slice(1)}
+function balanceSala(a,b){
+  const ent=[];M.cycles.filter(c=>c.finca===state.finca&&(state.variedad==="Todas"||c.variedad===state.variedad)).forEach(c=>c.sala.forEach(r=>{if(r.util)ent.push({fecha:r.fecha,k:c.variedad||"Sin variedad",det:tipoStd(r.tipo),q:r.util});if(r.desc)ent.push({fecha:r.fecha,k:null,d:r.desc})}));
+  if(!ent.length)return `<div class="panel dp-panel"><h2>Balance de sala</h2><p class="note">Aparece cuando haya ingresos a sala registrados para ${esc(state.finca)}.</p></div>`;
+  const ini=ent.map(r=>r.fecha).sort()[0];
+  const vf={};M.cycles.filter(c=>c.finca===state.finca).forEach(c=>vf[c.variedad]=1);
+  /* Solo se cuadran variedades con lotes en esta finca; las demás (tallos que salen distinto en un lote) son extras */
+  const todo=despRows().filter(r=>r.fecha>=ini);
+  const sal=todo.filter(r=>vf[r.variedad]).map(r=>({fecha:r.fecha,k:r.variedad,det:tipoStd(r.tipo),q:r.q}));
+  const extr={};todo.filter(r=>!vf[r.variedad]&&r.fecha>=a&&r.fecha<=b).forEach(r=>{const n=r.variedad||"Sin variedad";extr[n]=(extr[n]||0)+r.q});
+  const extTxt=Object.entries(extr).sort((x,y)=>y[1]-x[1]).map(([n,v])=>esc(n)+" "+num(v)).join(", ");
+  const keys=[...new Set(ent.filter(r=>r.k).map(r=>r.k).concat(sal.map(r=>r.k)))];
+  const sum=(arr,f)=>arr.reduce((s,r)=>s+(f(r)||0),0);
+  const hasta=(arr,d)=>arr.filter(r=>r.fecha<=d);
+  const util7=(k,d)=>sum(ent.filter(r=>r.k===k&&r.fecha<=d&&r.fecha>addDays(d,-DIAS_MAX_SALA)),r=>r.q);
+  const fin=b>todayStr?todayStr:b;
+  const detTxt=(arr,k)=>{const o={};arr.filter(r=>r.k===k&&r.fecha>=a&&r.fecha<=b).forEach(r=>o[r.det]=(o[r.det]||0)+r.q);return Object.entries(o).sort((x,y)=>y[1]-x[1]).map(([n,v])=>esc(n)+" "+num(v)).join(", ")};
+  const rows=keys.map(k=>{const eR=sum(ent.filter(r=>r.k===k&&r.fecha>=a&&r.fecha<=b),r=>r.q),dR=sum(sal.filter(r=>r.k===k&&r.fecha>=a&&r.fecha<=b),r=>r.q);
+    const saldo=sum(hasta(ent,fin).filter(r=>r.k===k),r=>r.q)-sum(hasta(sal,fin).filter(r=>r.k===k),r=>r.q);const lim=util7(k,fin);
+    const st=saldo<0?"neg":saldo>lim?"old":"ok";return {v:k,eR,dR,saldo,lim,st,de:detTxt(ent,k),dd:detTxt(sal,k)}}).filter(r=>r.eR||r.dR||r.saldo).sort((x,y)=>x.v.localeCompare(y.v));
+  const E=sum(ent.filter(r=>r.k&&r.fecha>=a&&r.fecha<=b),r=>r.q),X=sum(ent.filter(r=>!r.k&&r.fecha>=a&&r.fecha<=b),r=>r.d),S=sum(sal.filter(r=>r.fecha>=a&&r.fecha<=b),r=>r.q);
+  const saldoT=sum(hasta(ent,fin).filter(r=>r.k),r=>r.q)-sum(hasta(sal,fin),r=>r.q),limT=sum(ent.filter(r=>r.k&&r.fecha<=fin&&r.fecha>addDays(fin,-DIAS_MAX_SALA)),r=>r.q);
+  const stT=saldoT<0?"neg":saldoT>limT?"old":"ok";
+  const lbl={neg:"Faltan ingresos",old:`Flor de más de ${DIAS_MAX_SALA} días`,ok:"En orden"};
+  const sc={neg:col(.95).bg,old:"#E8C28F",ok:"var(--leaf)"};
+  const msg=stT==="neg"?`Se ha despachado ${num(-saldoT)} tallos más de lo que entró útil a sala. Probablemente faltan ingresos a sala por registrar.`
+    :stT==="old"?`Quedan ${num(saldoT)} tallos en cuarto frío, pero en los últimos ${DIAS_MAX_SALA} días solo entraron ${num(limT)}. Hay flor de más de ${DIAS_MAX_SALA} días, o despachos o descartes sin registrar.`
+    :`Quedan ${num(saldoT)} tallos en cuarto frío, todos de los últimos ${DIAS_MAX_SALA} días.`;
+  // saldo al final de cada semana del rango
+  const wks=[];for(let d=a;;d=addDays(d,7)){const k=wkKey(d);if(!wks.includes(k))wks.push(k);if(d>=b||wks.length>60)break}if(!wks.includes(wkKey(b)))wks.push(wkKey(b));
+  const endOf=k=>{let e=a;for(let d=a;d<=fin;d=addDays(d,1))if(wkKey(d)===k)e=d;return e};
+  const sv=wks.map(k=>{const e=endOf(k);if(e<ini||e>fin)return null;return sum(hasta(ent,e).filter(r=>r.k),r=>r.q)-sum(hasta(sal,e),r=>r.q)});
+  const lv=wks.map(k=>{const e=endOf(k);if(e<ini||e>fin)return null;return sum(ent.filter(r=>r.k&&r.fecha<=e&&r.fecha>addDays(e,-DIAS_MAX_SALA)),r=>r.q)});
+  const chart=sv.filter(x=>x!=null).length>1?`<div style="margin-top:14px">${lineChart(wks,[{name:"En cuarto frío",color:SERIES_COL[0],values:sv},{name:`Entró en los últimos ${DIAS_MAX_SALA} días`,color:SERIES_COL[3],values:lv}],{fmt:x=>num(Math.round(x)),isPct:false,wide:true})}
+    <div class="lg"><span><i style="background:${SERIES_COL[0]}"></i>En cuarto frío al cierre de cada semana</span><span><i style="background:${SERIES_COL[3]}"></i>Lo que entró en los últimos ${DIAS_MAX_SALA} días (máximo razonable)</span></div></div>`:"";
+  return `<div class="panel dp-panel"><h2>Balance de sala</h2>
+    <p class="hint" style="margin:2px 0 12px;color:var(--muted);font-size:13px">Lo que entra útil a sala menos lo que se despacha. Se cuenta desde el primer ingreso registrado (${fmt(ini)}).</p>
+    <div class="bal">
+      <div><span>Entró a sala</span><b>${num(E+X)}</b></div><div><span>Descarte</span><b>${num(X)}</b></div><div><span>Entró útil</span><b>${num(E)}</b></div><div><span>Despachado</span><b>${num(S)}</b></div>
+      <div class="hl" style="--c:${sc[stT]}"><span>Hoy en cuarto frío</span><b>${num(saldoT)}</b></div></div>
+    <p class="balmsg" style="--c:${sc[stT]}"><b>${lbl[stT]}.</b> ${msg}</p>
+    ${extTxt?`<p class="note" style="margin-top:10px">Extras despachados, sin lote propio en ${esc(state.finca)} y fuera del balance: ${extTxt}.</p>`:""}
+    ${chart}
+    <h3 style="font:600 14px var(--body);margin:18px 0 6px">Por variedad</h3>
+    <div class="scroll"><table class="chg"><thead><tr><th>Variedad</th><th class="r">Entró útil</th><th class="r">Despachado</th><th class="r">En cuarto frío</th><th class="est">Estado</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${esc(r.v)}</td><td class="r">${num(r.eR)}</td><td class="r">${num(r.dR)}</td><td class="r"><b${r.st!=="ok"?` style="color:${r.st==="neg"?"#FFB4B4":"#E8C28F"}"`:""}>${num(r.saldo)}</b></td><td class="est"><span class="st" style="--c:${sc[r.st]}">${lbl[r.st]}</span></td></tr>
+      <tr class="bd"><td colspan="5">${r.de?`<span>Entró: ${r.de}</span>`:""}${r.dd?`<span>Despachado: ${r.dd}</span>`:""}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="note" style="font-size:12px">Entró útil y Despachado corresponden al rango elegido. En cuarto frío es el saldo acumulado a ${fmt(fin)}. El balance incluye todas las comercializadoras.</p></div>`;
+}
+
 function cargarXLSX(){return new Promise((ok,ko)=>{if(window.XLSX)return ok();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>ok();s.onerror=ko;document.head.appendChild(s)})}
 async function descargarDespachos(btn){
   const ex=state.dp.export;if(!ex||!ex.rows.length)return;
