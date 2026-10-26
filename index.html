@@ -184,6 +184,31 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 @media (max-width:520px){.dp-top .big{font-size:36px}}
 
 /* Ciclos */
+.cy-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:16px}
+.cy-pick button{border:1.5px solid var(--onpage-line);background:var(--onpage-soft);color:var(--onpage);border-radius:12px;padding:8px 6px;cursor:pointer;text-align:center}
+.cy-pick button b{display:block;font:700 18px/1.1 var(--display)}
+.cy-pick button small{font-size:11px;color:var(--onpage-muted)}
+.cy-pick button[aria-pressed="true"]{background:var(--surface);border-color:var(--surface);color:var(--ink)}
+.cy-pick button[aria-pressed="true"] small{color:var(--muted)}
+.cy-tit{font-size:16px;margin:8px 0 14px;max-width:60ch}
+.cy-bars{display:flex;align-items:flex-end;gap:clamp(14px,4vw,40px);height:240px;padding:20px 4px 0;border-bottom:1px solid var(--line)}
+.cy-col{flex:0 1 120px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+.cy-col .tot{font:700 15px var(--display);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.cy-col .stk{width:100%;max-width:90px;height:calc(100% - 26px);display:flex;flex-direction:column;justify-content:flex-end;border-radius:8px 8px 0 0;overflow:hidden}
+.cy-col .stk i{display:block;width:100%}
+.cy-col.cur .stk{opacity:.55}
+.cy-col .lb{position:absolute;top:100%;margin-top:6px;font-size:13px;font-weight:600;text-align:center;white-space:nowrap;line-height:1.3}
+.cy-col .lb small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.cy-bars{margin-bottom:60px}
+@media (max-width:520px){.cy-col .lb{font-size:12px}.cy-col .lb small{font-size:10px}.cy-pick{grid-template-columns:repeat(auto-fill,minmax(60px,1fr))}.cy-t{font-size:13px}}
+.cy-t{width:100%;border-collapse:collapse;font-size:14px}
+.cy-t th{text-align:right;font-size:12.5px;font-weight:600;color:var(--muted);padding:0 0 8px 14px;white-space:nowrap}
+.cy-t th small{display:block;font-weight:400}
+.cy-t td{text-align:right;padding:8px 0 8px 14px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cy-t th:first-child,.cy-t td:first-child{text-align:left;padding-left:0}
+.cy-t em{font-style:normal;font-size:12px;margin-left:6px}
+.cy-t tr.main td{border-top:0}
+.cy-t .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
 .cy-top{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
 .cy-top .panel span{display:block;font-size:13px;color:var(--muted)}
 .cy-top .panel b{display:block;font:800 34px/1.1 var(--display);margin:4px 0 2px}
@@ -985,72 +1010,56 @@ const GRADOS=["Mini","Fancy","Select","Premium","Jumbo"];
 const ordenGrados=o=>Object.keys(o).sort((a,b)=>{const i=GRADOS.indexOf(a),j=GRADOS.indexOf(b);return (i<0?99:i)-(j<0?99:j)||a.localeCompare(b)});
 function renderCiclos(){
   const body=document.getElementById("cyBody");if(!body)return;
-  document.getElementById("cySub").textContent=`Productividad de los ciclos cerrados en ${state.finca}. Medida principal: total de tallos útiles del lote, por grado.`;
+  document.getElementById("cySub").textContent=`Elige un lote para comparar sus ciclos. Medida principal: tallos útiles por grado.`;
   const cs=M.cycles.filter(c=>c.finca===state.finca&&(state.variedad==="Todas"||c.variedad===state.variedad));
   const porLote={};cs.forEach(c=>(porLote[c.lote]??=[]).push(c));
-  Object.values(porLote).forEach(a=>{a.sort((x,y)=>x.inicio<y.inicio?-1:1);a.forEach((c,i)=>{c.nCiclo=i+1})});
-  const cerr=cs.filter(c=>!c.active&&c.fin).map(c=>({c,m:cicloMetricas(c)}));
-  const conDatos=cerr.filter(x=>x.m.U+x.m.X>0);
-  const sinDatos=cerr.filter(x=>!(x.m.U+x.m.X>0));
-  const tw=M.typical;const prox=cs.filter(c=>c.active&&c.weeks>=tw-4).sort((a,b)=>b.weeks-a.weeks);
-  const cl=c=>`${esc(c.lote)}, ciclo ${c.nCiclo}`;
+  Object.values(porLote).forEach(a=>{a.sort((x,y)=>x.inicio<y.inicio?-1:1);a.forEach((c,i)=>{c.nCiclo=i+1;c.m=cicloMetricas(c)})});
+  const tieneDatos=c=>c.m.U+c.m.X>0;
+  const lotes=Object.entries(porLote).filter(([l,a])=>a.some(c=>!c.active&&c.fin&&tieneDatos(c)))
+    .map(([l,a])=>({l,a,cerr:a.filter(c=>!c.active&&c.fin&&tieneDatos(c)).length,ult:a.filter(c=>c.fin).map(c=>c.fin).sort().at(-1)}))
+    .sort((x,y)=>{const nx=parseInt(lotNum(x.l))||9999,ny=parseInt(lotNum(y.l))||9999;return nx-ny||x.l.localeCompare(y.l)});
+  const sinDatos=cs.filter(c=>!c.active&&c.fin&&!tieneDatos(c));
   let h="";
-  if(!conDatos.length){
-    h+=`<p class="ok">Todavía no hay ciclos cerrados con ingresos a sala registrados en ${esc(state.finca)}. Cuando un lote cierre su ciclo, su flor producida aparece aquí automáticamente.</p>`;
+  if(!lotes.length){
+    h+=`<p class="ok">Todavía no hay lotes con un ciclo cerrado y su flor registrada en sala en ${esc(state.finca)}. Cuando un lote cierre su ciclo, aparece aquí para compararlo.</p>`;
   }else{
-    const avg=conDatos.reduce((s,x)=>s+x.m.U,0)/conDatos.length;const best=conDatos.slice().sort((a,b)=>b.m.U-a.m.U)[0];
-    h+=`<div class="cy-top">
-      <div class="panel"><span>Ciclos cerrados con datos</span><b>${conDatos.length}</b><small>${num(conDatos.reduce((s,x)=>s+x.m.U,0))} tallos útiles en total</small></div>
-      <div class="panel"><span>Promedio por ciclo</span><b>${num(Math.round(avg))}</b><small>tallos útiles por lote</small></div>
-      <div class="panel"><span>Mejor ciclo</span><b>${num(best.m.U)}</b><small>${cl(best.c)}, tallos útiles</small></div></div>`;
-    // Comparativo de lotes con 2 o más ciclos cerrados
-    const pares=[];Object.values(porLote).forEach(a=>{const cc=a.map(c=>conDatos.find(x=>x.c===c)).filter(Boolean);if(cc.length>=2)pares.push({lote:a[0].lote,prev:cc.at(-2),last:cc.at(-1)})});
-    pares.forEach(p=>p.d=(p.last.m.U-p.prev.m.U)/(p.prev.m.U||1));pares.sort((a,b)=>b.d-a.d);
-    h+=`<div class="panel dp-panel"><h2>Ciclo anterior vs. último ciclo</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">Total de tallos útiles del lote. Toca un lote para ver el comparativo por grado.</p>`;
-    if(!pares.length)h+=`<p class="empty">Aparece cuando un lote cierre su segundo ciclo con ingresos a sala registrados.</p>`;
-    else{
-      const vals=pares.flatMap(p=>[p.prev.m.U,p.last.m.U]);const mx=Math.max(...vals)*1.06,mn=Math.min(...vals)*0.85;const X=v=>(v-mn)/(mx-mn||1)*100;
-      const cPrev="var(--muted)",cLast=SERIES_COL[0];
-      h+=`<div class="cy-key"><span><i style="background:${cPrev}"></i>Ciclo anterior</span><span><i style="background:${cLast}"></i>Último ciclo</span></div>`;
-      pares.forEach(p=>{const a=p.prev.m.U,b=p.last.m.U,up=b>=a,k=up?{bg:"var(--leaf)",fg:"#173428"}:col(Math.min(1,.5+Math.abs(p.d)));const op=state.cy.open===p.lote;
-        h+=`<button class="db" data-l="${esc(p.lote)}" aria-expanded="${op}"><span>${esc(p.lote)}</span><span class="tr">
-          <span class="ln" style="left:${X(Math.min(a,b))}%;width:${Math.abs(X(b)-X(a))}%;background:${up?"var(--leaf)":k.bg}"></span>
-          <span class="dt" style="left:${X(a)}%;background:${cPrev}"></span><span class="dt" style="left:${X(b)}%;background:${cLast}"></span>
-          <span class="dv" style="left:${X(b)}%">${num(Math.round(b))}</span></span>
-          ${Math.round(p.d*100)===0?`<span class="ch" style="background:var(--soft);color:var(--ink)">Igual</span>`:`<span class="ch" style="background:${up?"var(--leaf)":k.bg};color:${up?"#173428":k.fg}">${up?"▲":"▼"} ${Math.abs(Math.round(p.d*100))}%</span>`}</button>`;
-        if(op){const A=p.prev,B=p.last;const f=(v,d=0)=>v==null?"—":num(+v.toFixed(d));const pc=v=>v==null?"—":pct(v);
-          const dlt=(x,y,inv,isP)=>{if(x==null||y==null||x===y)return "";if(!isP&&x===0)return ` <span style="color:#BDEBD0">nuevo</span>`;if(!isP&&y===0)return ` <span style="color:#FFB4B4">no hubo</span>`;const d=isP?Math.round((y-x)*100):Math.round((y-x)/(x||1)*100);const good=inv?y<x:y>x;return ` <span style="color:${good?"#BDEBD0":"#FFB4B4"}">${d>0?"+":""}${d}${isP?" pts":"%"}</span>`};
-          const tip=m=>Object.entries(m.tipos).sort((x,y)=>y[1]-x[1]).map(([n,v])=>`${esc(n)} ${num(v)}`).join("<br>")||"—";
-          h+=`<div class="cmp"><table><thead><tr><th></th><th>Ciclo ${A.c.nCiclo}</th><th>Ciclo ${B.c.nCiclo}</th></tr></thead><tbody>
-            <tr><td>Fechas</td><td>${fmt(A.c.inicio)} a<br>${fmt(A.c.fin)}</td><td>${fmt(B.c.inicio)} a<br>${fmt(B.c.fin)}</td></tr>
-            <tr><td>Semanas</td><td>${A.c.weeks}</td><td>${B.c.weeks}</td></tr>
-            <tr><td>Camas</td><td>${f(A.c.camas)}</td><td>${f(B.c.camas)}</td></tr>
-            <tr><td><b>Tallos útiles</b></td><td class="u">${f(A.m.U)}</td><td class="u">${f(B.m.U)}${dlt(A.m.U,B.m.U)}</td></tr>
-            ${ordenGrados({...A.m.tipos,...B.m.tipos}).map(g=>`<tr><td style="padding-left:12px">${esc(g)}</td><td>${f(A.m.tipos[g]||0)}</td><td>${f(B.m.tipos[g]||0)}${dlt(A.m.tipos[g]||0,B.m.tipos[g]||0)}</td></tr>`).join("")}
-            <tr><td>Descarte</td><td>${pc(A.m.desc)}</td><td>${pc(B.m.desc)}${dlt(A.m.desc,B.m.desc,true,true)}</td></tr>
-            <tr><td>Tallos por cama</td><td>${f(A.m.cama)}</td><td>${f(B.m.cama)}${dlt(A.m.cama,B.m.cama)}</td></tr>
-            <tr><td>Incidencia promedio</td><td>${pc(A.m.inc)}</td><td>${pc(B.m.inc)}${dlt(A.m.inc,B.m.inc,true,true)}</td></tr>
-            <tr><td>Abonadas</td><td>${A.m.ab}</td><td>${B.m.ab}</td></tr>
-            <tr><td>Fumigaciones</td><td>${A.m.fu}</td><td>${B.m.fu}</td></tr>
-          </tbody></table></div>`}
-      });
-    }
-    h+=`</div>`;
-    // Ranking de todos los ciclos cerrados
-    const rk=conDatos.slice().sort((a,b)=>b.m.U-a.m.U);const mxr=rk[0].m.U;
-    const gs=ordenGrados(Object.assign({},...rk.map(x=>x.m.tipos)));const gc={};gs.forEach((g,i)=>gc[g]=SERIES_COL[i%SERIES_COL.length]);
-    const showN=state.cy.all?rk.length:10;
-    h+=`<div class="panel dp-panel"><h2>Todos los ciclos cerrados</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Del que más tallos útiles dio al que menos, por grado.</p>
+    if(!state.cy.lote||!lotes.some(x=>x.l===state.cy.lote))state.cy.lote=lotes.slice().sort((a,b)=>a.ult<b.ult?1:-1)[0].l;
+    h+=`<div class="cy-pick" role="group" aria-label="Lote">${lotes.map(x=>`<button data-l="${esc(x.l)}" aria-pressed="${x.l===state.cy.lote}"><b>${esc(lotNum(x.l))}</b><small>${x.cerr} ciclo${x.cerr>1?"s":""}</small></button>`).join("")}</div>`;
+    const L=lotes.find(x=>x.l===state.cy.lote);
+    // columnas: ciclos cerrados con datos + ciclo en curso si ya tiene flor
+    const cols=L.a.filter(c=>tieneDatos(c)&&(c.fin||c.active));
+    const cerr=cols.filter(c=>!c.active);const cur=cols.find(c=>c.active);
+    const A=cerr.at(-2),B=cerr.at(-1);
+    let titular;
+    if(A&&B){const d=(B.m.U-A.m.U)/(A.m.U||1);titular=`El ciclo ${B.nCiclo} dio <b>${num(B.m.U)}</b> tallos útiles, ${Math.round(d*100)===0?"lo mismo que":`<b>${Math.abs(Math.round(d*100))}% ${d>0?"más":"menos"}</b> que`} el ciclo ${A.nCiclo} (${num(A.m.U)}).`}
+    else titular=`El ciclo ${B.nCiclo} dio <b>${num(B.m.U)}</b> tallos útiles. La comparación aparece cuando cierre el siguiente ciclo.`;
+    const gs=ordenGrados(Object.assign({},...cols.map(c=>c.m.tipos)));const gc={};gs.forEach((g,i)=>gc[g]=SERIES_COL[i%SERIES_COL.length]);
+    const mx=Math.max(...cols.map(c=>c.m.U),1);
+    const lab=c=>c.active?`Ciclo ${c.nCiclo}<small>en curso, sem. ${c.weeks}</small>`:`Ciclo ${c.nCiclo}<small>${fmtS(c.inicio)} ${D(c.inicio).getFullYear()} a<br>${fmtS(c.fin)} ${D(c.fin).getFullYear()}</small>`;
+    h+=`<div class="panel dp-panel"><h2 style="font:600 30px/1.1 var(--serif)">${esc(L.l)}<span style="font:500 14px var(--body);color:var(--muted);margin-left:10px">${esc(L.a.at(-1).variedad||"")}, ${esc(state.finca)}</span></h2>
+      <p class="cy-tit">${titular}</p>
       <div class="cy-key">${gs.map(g=>`<span><i style="background:${gc[g]}"></i>${esc(g)}</span>`).join("")}</div>
-      ${rk.slice(0,showN).map(x=>`<div class="rk"><span>${cl(x.c)}<small>${esc(x.c.variedad||"")}, cerró ${fmt(x.c.fin)}</small></span><span class="bar" style="display:flex">${gs.filter(g=>x.m.tipos[g]).map(g=>`<i title="${esc(g)} ${num(x.m.tipos[g])}" style="width:${x.m.tipos[g]/mxr*100}%;background:${gc[g]};border-radius:0"></i>`).join("")}</span><span class="v">${num(x.m.U)}</span></div>`).join("")}
-      ${rk.length>10?`<button class="more" id="cyAll">${state.cy.all?"Ver solo los 10 primeros":"Ver los "+rk.length+" ciclos"}</button>`:""}</div>`;
+      <div class="cy-bars">${cols.map(c=>`<div class="cy-col${c.active?" cur":""}"><span class="tot">${num(c.m.U)}</span><div class="stk">${gs.slice().reverse().filter(g=>c.m.tipos[g]).map(g=>`<i title="${esc(g)} ${num(c.m.tipos[g])}" style="height:${c.m.tipos[g]/mx*100}%;background:${gc[g]}"></i>`).join("")}</div><span class="lb">${lab(c)}</span></div>`).join("")}</div>`;
+    // tabla comparativa
+    const f=(v,d=0)=>v==null?"—":num(+v.toFixed(d));const pc=v=>v==null?"—":pct(v);
+    const dlt=(x,y,inv,isP)=>{if(x==null||y==null||x===y)return "";if(!isP&&x===0)return `<em style="color:#BDEBD0">nuevo</em>`;if(!isP&&y===0)return `<em style="color:#FFB4B4">no hubo</em>`;const d=isP?Math.round((y-x)*100):Math.round((y-x)/(x||1)*100);if(!d)return "";const good=inv?y<x:y>x;return `<em style="color:${good?"#BDEBD0":"#FFB4B4"}">${d>0?"+":""}${d}${isP?" pts":"%"}</em>`};
+    const row=(name,get,fm,opt={})=>`<tr${opt.cls?` class="${opt.cls}"`:""}><td>${name}</td>${cols.map((c,i)=>{const v=get(c);const p=i>0&&!c.active?get(cols[i-1]):null;return `<td>${fm(v)}${i>0&&!c.active&&opt.cmp!==false?dlt(p,v,opt.inv,opt.isP):""}</td>`}).join("")}</tr>`;
+    h+=`<div class="scroll" style="margin-top:18px"><table class="cy-t"><thead><tr><th></th>${cols.map(c=>`<th>Ciclo ${c.nCiclo}${c.active?"<small>en curso</small>":""}</th>`).join("")}</tr></thead><tbody>
+      ${row("<b>Tallos útiles</b>",c=>c.m.U,v=>`<b>${f(v)}</b>`,{cls:"main"})}
+      ${gs.map(g=>row(`<span style="padding-left:10px"><i class="sw" style="background:${gc[g]}"></i>${esc(g)}</span>`,c=>c.m.tipos[g]||0,v=>f(v))).join("")}
+      ${row("Descarte",c=>c.m.desc,pc,{inv:true,isP:true})}
+      ${row("Semanas",c=>c.weeks,v=>f(v),{cmp:false})}
+      ${row("Camas",c=>c.camas,v=>f(v),{cmp:false})}
+      ${row("Tallos por cama",c=>c.m.cama,v=>f(v))}
+      ${row("Incidencia promedio",c=>c.m.inc,pc,{inv:true,isP:true})}
+      ${row("Abonadas",c=>c.m.ab,v=>f(v),{cmp:false})}
+      ${row("Fumigaciones",c=>c.m.fu,v=>f(v),{cmp:false})}
+      </tbody></table></div>
+      <p class="note" style="font-size:12px">Cada cambio se compara con el ciclo anterior.${cur?" El ciclo en curso todavía está produciendo, así que no se compara.":""}</p></div>`;
   }
-  if(prox.length)h+=`<div class="panel dp-panel"><h2>Próximos a cerrar</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Lotes en las últimas semanas de su ciclo (el ciclo típico dura ~${tw} semanas).</p>
-    ${prox.slice(0,8).map(c=>{const m=cicloMetricas(c);return `<div class="rk"><span>${cl(c)}<small>semana ${c.weeks}</small></span><span class="bar"><i style="width:${Math.min(100,c.weeks/tw*100)}%;background:var(--leaf)"></i></span><span class="v">${m.U?num(m.U):"—"}<small>tallos útiles</small></span></div>`}).join("")}</div>`;
-  if(sinDatos.length)h+=`<p class="note" style="color:var(--onpage-muted);font-size:12.5px">Ciclos cerrados antes de registrar ingresos a sala, sin flor para comparar: ${sinDatos.map(x=>`${cl(x.c)} (cerró ${fmtS(x.c.fin)})`).join(", ")}.</p>`;
+  if(sinDatos.length)h+=`<p class="note" style="color:var(--onpage-muted);font-size:12.5px">Ciclos cerrados antes de registrar ingresos a sala, sin flor para comparar: ${sinDatos.map(c=>`${esc(c.lote)}, ciclo ${c.nCiclo} (cerró ${fmtS(c.fin)})`).join("; ")}.</p>`;
   body.innerHTML=h;
-  body.querySelectorAll(".db").forEach(b=>b.onclick=()=>{state.cy.open=state.cy.open===b.dataset.l?null:b.dataset.l;renderCiclos()});
-  const ca=document.getElementById("cyAll");if(ca)ca.onclick=()=>{state.cy.all=!state.cy.all;renderCiclos()};
+  body.querySelectorAll(".cy-pick button").forEach(b=>b.onclick=()=>{state.cy.lote=b.dataset.l;renderCiclos()});
 }
 
 function setView(v){state.view=v;document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
