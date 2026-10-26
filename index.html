@@ -209,6 +209,8 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .cy-t em{font-style:normal;font-size:12px;margin-left:6px}
 .cy-t tr.main td{border-top:0}
 .cy-t tr.sep td{border-top:2px solid var(--line)}
+.cy-t .mt{padding:0;margin-left:10px;font-size:12.5px}
+.cy-t tr.mo td{font-size:13px;background:rgba(0,0,0,.06)}
 .cy-t small.pp{color:var(--muted);font-size:11.5px;margin-left:5px}
 .cy-t .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
 .cy-top{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
@@ -1004,7 +1006,7 @@ state.cy={open:null,all:false};
 function cicloMetricas(c){
   const U=c.sala.reduce((s,r)=>s+r.util,0),X=c.sala.reduce((s,r)=>s+r.desc,0);
   const rates=c.monDates.map(d=>stats(c.mon.filter(m=>m.fecha===d)).rate).filter(x=>x!=null);
-  const tipos={},mot={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}if(r.desc){const k=(r.motivo||"Sin motivo").trim();mot[k]=(mot[k]||0)+r.desc}});
+  const tipos={},mot={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}if(r.desc){let k=(r.motivo||"Sin motivo").trim();if(k.includes(","))k="Varios motivos (registros iniciales)";mot[k]=(mot[k]||0)+r.desc}});
   return {U,X,cama:c.camas?U/c.camas:null,planta:c.plantas?U/c.plantas:null,desc:U+X?X/(U+X):null,
     inc:rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null,ab:c.abon.length,fu:c.fum.length,tipos,mot};
 }
@@ -1033,8 +1035,8 @@ function renderCiclos(){
     const cerr=cols.filter(c=>!c.active);const cur=cols.find(c=>c.active);
     const A=cerr.at(-2),B=cerr.at(-1);
     let titular;
-    if(A&&B){const d=(B.m.U-A.m.U)/(A.m.U||1);titular=`El ciclo ${B.nCiclo} dio <b>${num(B.m.U)}</b> tallos útiles, ${Math.round(d*100)===0?"lo mismo que":`<b>${Math.abs(Math.round(d*100))}% ${d>0?"más":"menos"}</b> que`} el ciclo ${A.nCiclo} (${num(A.m.U)}).`}
-    else titular=`El ciclo ${B.nCiclo} dio <b>${num(B.m.U)}</b> tallos útiles. La comparación aparece cuando cierre el siguiente ciclo.`;
+    if(A&&B){const d=(B.m.U-A.m.U)/(A.m.U||1);titular=`Ciclo ${B.nCiclo}, producción de tallos útiles: <b>${num(B.m.U)}</b>. ${Math.round(d*100)===0?"Igual que":`<b>${Math.abs(Math.round(d*100))}% ${d>0?"más":"menos"}</b> que`} el ciclo ${A.nCiclo} (${num(A.m.U)}).`}
+    else titular=`Ciclo ${B.nCiclo}, producción de tallos útiles: <b>${num(B.m.U)}</b>. La comparación aparece cuando cierre el siguiente ciclo.`;
     const gs=ordenGrados(Object.assign({},...cols.map(c=>c.m.tipos)));const gc={};gs.forEach((g,i)=>gc[g]=SERIES_COL[i%SERIES_COL.length]);
     const mx=Math.max(...cols.map(c=>c.m.U),1);
     const lab=c=>c.active?`Ciclo ${c.nCiclo}<small>en curso, sem. ${c.weeks}</small>`:`Ciclo ${c.nCiclo}<small>${fmtS(c.inicio)} ${D(c.inicio).getFullYear()} a<br>${fmtS(c.fin)} ${D(c.fin).getFullYear()}</small>`;
@@ -1049,11 +1051,11 @@ function renderCiclos(){
     h+=`<div class="scroll" style="margin-top:18px"><table class="cy-t"><thead><tr><th></th>${cols.map(c=>`<th>Ciclo ${c.nCiclo}${c.active?"<small>en curso</small>":""}</th>`).join("")}</tr></thead><tbody>
       ${row("<b>Tallos útiles</b>",c=>c.m.U,v=>`<b>${f(v)}</b>`,{cls:"main"})}
       ${gs.map(g=>row(`<span style="padding-left:10px"><i class="sw" style="background:${gc[g]}"></i>${esc(g)}</span>`,c=>c.m.tipos[g]||0,v=>f(v))).join("")}
-      ${row("<b>Tallos descartados</b>",c=>c.m.X,v=>`<b>${f(v)}</b>`,{inv:true,cls:"sep"})}
+      ${row(`<b>Tallos descartados</b>${Object.keys(Object.assign({},...cols.map(c=>c.m.mot))).length?` <button class="more mt" id="cyMot" aria-expanded="${!!state.cy.mot}">${state.cy.mot?"Ocultar motivos":"Ver motivos"}</button>`:""}`,c=>c.m.X,v=>`<b>${f(v)}</b>`,{inv:true,cls:"sep"})}
       ${row("% de lo cosechado",c=>c.m.desc,pc,{inv:true,isP:true})}
       ${(()=>{const ms=Object.keys(Object.assign({},...cols.map(c=>c.m.mot))).sort((a,b)=>cols.reduce((s,c)=>s+(c.m.mot[b]||0),0)-cols.reduce((s,c)=>s+(c.m.mot[a]||0),0));
-        return ms.map(mo=>`<tr><td><span style="padding-left:10px">${esc(mo)}</span></td>${cols.map((c,i)=>{const v=c.m.mot[mo]||0;const pr=c.m.X?v/c.m.X:null;const prev=i>0&&!c.active?cols[i-1]:null;
-          return `<td>${f(v)}<small class="pp">${pr!=null&&v?pct(pr):""}</small>${prev?dlt(prev.m.mot[mo]||0,v,true):""}</td>`}).join("")}</tr>`).join("")})()}
+        return state.cy.mot?ms.map(mo=>`<tr class="mo"><td><span style="padding-left:10px">${esc(mo)}</span></td>${cols.map((c,i)=>{const v=c.m.mot[mo]||0;const pr=c.m.X?v/c.m.X:null;const prev=i>0&&!c.active?cols[i-1]:null;
+          return `<td>${f(v)}<small class="pp">${pr!=null&&v?pct(pr):""}</small>${prev?dlt(prev.m.mot[mo]||0,v,true):""}</td>`}).join("")}</tr>`).join(""):""})()}
       ${row("Semanas",c=>c.weeks,v=>f(v),{cmp:false,cls:"sep"})}
       ${row("Camas",c=>c.camas,v=>f(v),{cmp:false})}
       ${row("Tallos por cama",c=>c.m.cama,v=>f(v))}
@@ -1061,10 +1063,11 @@ function renderCiclos(){
       ${row("Abonadas",c=>c.m.ab,v=>f(v),{cmp:false})}
       ${row("Fumigaciones",c=>c.m.fu,v=>f(v),{cmp:false})}
       </tbody></table></div>
-      <p class="note" style="font-size:12px">Cada cambio se compara con el ciclo anterior. El porcentaje junto a cada motivo es su parte del total descartado en ese ciclo.${cur?" El ciclo en curso todavía está produciendo, así que no se compara.":""}</p></div>`;
+      <p class="note" style="font-size:12px">Cada cambio se compara con el ciclo anterior. El porcentaje junto a cada motivo es su parte del total descartado en ese ciclo. "Varios motivos" agrupa los primeros registros, que se hicieron sin separar cantidades por motivo.${cur?" El ciclo en curso todavía está produciendo, así que no se compara.":""}</p></div>`;
   }
   if(sinDatos.length)h+=`<p class="note" style="color:var(--onpage-muted);font-size:12.5px">Ciclos cerrados antes de registrar ingresos a sala, sin flor para comparar: ${sinDatos.map(c=>`${esc(c.lote)}, ciclo ${c.nCiclo} (cerró ${fmtS(c.fin)})`).join("; ")}.</p>`;
   body.innerHTML=h;
+  const mb=document.getElementById("cyMot");if(mb)mb.onclick=()=>{state.cy.mot=!state.cy.mot;renderCiclos()};
   body.querySelectorAll(".cy-pick button").forEach(b=>b.onclick=()=>{state.cy.lote=b.dataset.l;renderCiclos()});
 }
 
