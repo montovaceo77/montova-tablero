@@ -179,9 +179,39 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .tabs button{white-space:nowrap}
 #dpPreset{flex-wrap:wrap;border-radius:18px}
 #dpPreset button{white-space:nowrap}
-@media (max-width:520px){.tabs button{margin-right:12px;font-size:14px}}
+@media (max-width:520px){.tabs button{margin-right:10px;font-size:13.5px}}
 @media (max-width:860px){.dp-top{grid-template-columns:1fr}.dp-filter{align-items:flex-start}}
 @media (max-width:520px){.dp-top .big{font-size:36px}}
+
+/* Ciclos */
+.cy-top{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.cy-top .panel span{display:block;font-size:13px;color:var(--muted)}
+.cy-top .panel b{display:block;font:800 34px/1.1 var(--display);margin:4px 0 2px}
+.cy-top .panel small{font-size:12.5px;color:var(--muted)}
+.db{display:grid;grid-template-columns:minmax(80px,120px) 1fr 84px;gap:12px;align-items:center;width:100%;border:0;background:transparent;color:inherit;padding:10px 6px;margin:0 -6px;border-radius:12px;cursor:pointer;text-align:left;font-size:14px}
+.db:hover,.db[aria-expanded="true"]{background:var(--soft)}
+.db .tr{position:relative;height:22px}
+.db .tr::before{content:"";position:absolute;left:0;right:0;top:10px;height:2px;background:var(--line)}
+.db .ln{position:absolute;top:9px;height:4px;border-radius:2px}
+.db .dt{position:absolute;top:4px;width:14px;height:14px;border-radius:50%;margin-left:-7px}
+.db .dv{position:absolute;top:-14px;font-size:11px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.db .ch{justify-self:end;font-weight:700;font-size:13px;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.cy-key{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin:2px 0 8px;flex-wrap:wrap}
+.cy-key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.cmp{margin:4px 0 12px;padding:4px 14px 10px;background:var(--soft);border-radius:12px}
+.cmp table{width:100%;border-collapse:collapse;font-size:13.5px}
+.cmp th{text-align:right;font-size:12px;color:var(--muted);font-weight:600;padding:8px 0 6px 10px}
+.cmp th:first-child,.cmp td:first-child{text-align:left;padding-left:0}
+.cmp td{text-align:right;padding:6px 0 6px 10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.cmp td.u{font-weight:700}
+.rk{display:grid;grid-template-columns:minmax(120px,170px) 1fr 70px;gap:10px;align-items:center;font-size:13.5px;padding:5px 0}
+.rk .bar{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
+.rk .bar i{display:block;height:100%;border-radius:999px}
+.rk .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.rk small{display:block;color:var(--muted);font-size:11.5px;font-weight:400}
+@media (max-width:860px){.cy-top{gap:8px}.cy-top .panel{padding:14px}.cy-top .panel b{font-size:26px}}
+@media (max-width:520px){.cy-top .panel span{font-size:11.5px}.cy-top .panel small{display:none}}
+@media (max-width:520px){.db{grid-template-columns:64px 1fr 70px;gap:8px}.rk{grid-template-columns:110px 1fr 56px}}
 
 /* Mapa */
 .map-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
@@ -276,6 +306,7 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
     <button role="tab" data-v="resumen" aria-selected="true">Resumen</button>
     <button role="tab" data-v="semanas" aria-selected="false">Semana a semana</button>
     <button role="tab" data-v="despachos" aria-selected="false">Despachos</button>
+    <button role="tab" data-v="ciclos" aria-selected="false">Ciclos</button>
   </nav>
 
   <div id="viewResumen">
@@ -329,6 +360,11 @@ details.dq ul{margin:8px 0 0;padding-left:18px}
       </div>
     </section>
     <div id="dpBody"></div>
+  </div>
+
+  <div id="viewCiclos" hidden>
+    <section class="dp-head"><div><h2 class="t">Ciclos</h2><p class="s" id="cySub"></p></div></section>
+    <div id="cyBody"></div>
   </div>
 
   <details class="dq" id="dq"></details>
@@ -542,7 +578,7 @@ function render(){
   if(rep.length)dq.push(`${rep.length===1?"Una cama aparece":rep.length+" camas aparecen"} dos veces el mismo día en Monitoreo; se usa el último registro: ${rep.map(r=>`${r.lote}, cama ${r.cama}, ${fmt(r.fecha)}`).join("; ")}.`);
   if(!cs.some(c=>c.sala.length))dq.push("Aún no hay registros de ingreso a sala; esa parte del tablero se llena sola cuando empiecen.");
   const dqe=document.getElementById("dq");dqe.hidden=!dq.length;
-  renderWeeks();renderDespachos();
+  renderWeeks();renderDespachos();renderCiclos();
   dqe.innerHTML=`<summary>Notas sobre los datos (${dq.length})</summary><ul>${dq.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
 }
 
@@ -936,8 +972,89 @@ async function descargarDespachos(btn){
 document.querySelectorAll("#dpPreset button").forEach(x=>x.onclick=()=>{state.dp.preset=x.dataset.p;renderDespachos()});
 ["dpDesde","dpHasta"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{state.dp.preset="custom";state.dp.desde=document.getElementById("dpDesde").value;state.dp.hasta=document.getElementById("dpHasta").value;renderDespachos()}));
 
+/* ---------- Ciclos: productividad de ciclos cerrados ---------- */
+state.cy={open:null,all:false};
+function cicloMetricas(c){
+  const U=c.sala.reduce((s,r)=>s+r.util,0),X=c.sala.reduce((s,r)=>s+r.desc,0);
+  const rates=c.monDates.map(d=>stats(c.mon.filter(m=>m.fecha===d)).rate).filter(x=>x!=null);
+  const tipos={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}});
+  return {U,X,cama:c.camas?U/c.camas:null,planta:c.plantas?U/c.plantas:null,desc:U+X?X/(U+X):null,
+    inc:rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null,ab:c.abon.length,fu:c.fum.length,tipos};
+}
+const GRADOS=["Mini","Fancy","Select","Premium","Jumbo"];
+const ordenGrados=o=>Object.keys(o).sort((a,b)=>{const i=GRADOS.indexOf(a),j=GRADOS.indexOf(b);return (i<0?99:i)-(j<0?99:j)||a.localeCompare(b)});
+function renderCiclos(){
+  const body=document.getElementById("cyBody");if(!body)return;
+  document.getElementById("cySub").textContent=`Productividad de los ciclos cerrados en ${state.finca}. Medida principal: total de tallos útiles del lote, por grado.`;
+  const cs=M.cycles.filter(c=>c.finca===state.finca&&(state.variedad==="Todas"||c.variedad===state.variedad));
+  const porLote={};cs.forEach(c=>(porLote[c.lote]??=[]).push(c));
+  Object.values(porLote).forEach(a=>{a.sort((x,y)=>x.inicio<y.inicio?-1:1);a.forEach((c,i)=>{c.nCiclo=i+1})});
+  const cerr=cs.filter(c=>!c.active&&c.fin).map(c=>({c,m:cicloMetricas(c)}));
+  const conDatos=cerr.filter(x=>x.m.U+x.m.X>0);
+  const sinDatos=cerr.filter(x=>!(x.m.U+x.m.X>0));
+  const tw=M.typical;const prox=cs.filter(c=>c.active&&c.weeks>=tw-4).sort((a,b)=>b.weeks-a.weeks);
+  const cl=c=>`${esc(c.lote)}, ciclo ${c.nCiclo}`;
+  let h="";
+  if(!conDatos.length){
+    h+=`<p class="ok">Todavía no hay ciclos cerrados con ingresos a sala registrados en ${esc(state.finca)}. Cuando un lote cierre su ciclo, su flor producida aparece aquí automáticamente.</p>`;
+  }else{
+    const avg=conDatos.reduce((s,x)=>s+x.m.U,0)/conDatos.length;const best=conDatos.slice().sort((a,b)=>b.m.U-a.m.U)[0];
+    h+=`<div class="cy-top">
+      <div class="panel"><span>Ciclos cerrados con datos</span><b>${conDatos.length}</b><small>${num(conDatos.reduce((s,x)=>s+x.m.U,0))} tallos útiles en total</small></div>
+      <div class="panel"><span>Promedio por ciclo</span><b>${num(Math.round(avg))}</b><small>tallos útiles por lote</small></div>
+      <div class="panel"><span>Mejor ciclo</span><b>${num(best.m.U)}</b><small>${cl(best.c)}, tallos útiles</small></div></div>`;
+    // Comparativo de lotes con 2 o más ciclos cerrados
+    const pares=[];Object.values(porLote).forEach(a=>{const cc=a.map(c=>conDatos.find(x=>x.c===c)).filter(Boolean);if(cc.length>=2)pares.push({lote:a[0].lote,prev:cc.at(-2),last:cc.at(-1)})});
+    pares.forEach(p=>p.d=(p.last.m.U-p.prev.m.U)/(p.prev.m.U||1));pares.sort((a,b)=>b.d-a.d);
+    h+=`<div class="panel dp-panel"><h2>Ciclo anterior vs. último ciclo</h2><p class="hint" style="margin:2px 0 8px;color:var(--muted);font-size:13px">Total de tallos útiles del lote. Toca un lote para ver el comparativo por grado.</p>`;
+    if(!pares.length)h+=`<p class="empty">Aparece cuando un lote cierre su segundo ciclo con ingresos a sala registrados.</p>`;
+    else{
+      const vals=pares.flatMap(p=>[p.prev.m.U,p.last.m.U]);const mx=Math.max(...vals)*1.06,mn=Math.min(...vals)*0.85;const X=v=>(v-mn)/(mx-mn||1)*100;
+      const cPrev="var(--muted)",cLast=SERIES_COL[0];
+      h+=`<div class="cy-key"><span><i style="background:${cPrev}"></i>Ciclo anterior</span><span><i style="background:${cLast}"></i>Último ciclo</span></div>`;
+      pares.forEach(p=>{const a=p.prev.m.U,b=p.last.m.U,up=b>=a,k=up?{bg:"var(--leaf)",fg:"#173428"}:col(Math.min(1,.5+Math.abs(p.d)));const op=state.cy.open===p.lote;
+        h+=`<button class="db" data-l="${esc(p.lote)}" aria-expanded="${op}"><span>${esc(p.lote)}</span><span class="tr">
+          <span class="ln" style="left:${X(Math.min(a,b))}%;width:${Math.abs(X(b)-X(a))}%;background:${up?"var(--leaf)":k.bg}"></span>
+          <span class="dt" style="left:${X(a)}%;background:${cPrev}"></span><span class="dt" style="left:${X(b)}%;background:${cLast}"></span>
+          <span class="dv" style="left:${X(b)}%">${num(Math.round(b))}</span></span>
+          ${Math.round(p.d*100)===0?`<span class="ch" style="background:var(--soft);color:var(--ink)">Igual</span>`:`<span class="ch" style="background:${up?"var(--leaf)":k.bg};color:${up?"#173428":k.fg}">${up?"▲":"▼"} ${Math.abs(Math.round(p.d*100))}%</span>`}</button>`;
+        if(op){const A=p.prev,B=p.last;const f=(v,d=0)=>v==null?"—":num(+v.toFixed(d));const pc=v=>v==null?"—":pct(v);
+          const dlt=(x,y,inv,isP)=>{if(x==null||y==null||x===y)return "";if(!isP&&x===0)return ` <span style="color:#BDEBD0">nuevo</span>`;if(!isP&&y===0)return ` <span style="color:#FFB4B4">no hubo</span>`;const d=isP?Math.round((y-x)*100):Math.round((y-x)/(x||1)*100);const good=inv?y<x:y>x;return ` <span style="color:${good?"#BDEBD0":"#FFB4B4"}">${d>0?"+":""}${d}${isP?" pts":"%"}</span>`};
+          const tip=m=>Object.entries(m.tipos).sort((x,y)=>y[1]-x[1]).map(([n,v])=>`${esc(n)} ${num(v)}`).join("<br>")||"—";
+          h+=`<div class="cmp"><table><thead><tr><th></th><th>Ciclo ${A.c.nCiclo}</th><th>Ciclo ${B.c.nCiclo}</th></tr></thead><tbody>
+            <tr><td>Fechas</td><td>${fmt(A.c.inicio)} a<br>${fmt(A.c.fin)}</td><td>${fmt(B.c.inicio)} a<br>${fmt(B.c.fin)}</td></tr>
+            <tr><td>Semanas</td><td>${A.c.weeks}</td><td>${B.c.weeks}</td></tr>
+            <tr><td>Camas</td><td>${f(A.c.camas)}</td><td>${f(B.c.camas)}</td></tr>
+            <tr><td><b>Tallos útiles</b></td><td class="u">${f(A.m.U)}</td><td class="u">${f(B.m.U)}${dlt(A.m.U,B.m.U)}</td></tr>
+            ${ordenGrados({...A.m.tipos,...B.m.tipos}).map(g=>`<tr><td style="padding-left:12px">${esc(g)}</td><td>${f(A.m.tipos[g]||0)}</td><td>${f(B.m.tipos[g]||0)}${dlt(A.m.tipos[g]||0,B.m.tipos[g]||0)}</td></tr>`).join("")}
+            <tr><td>Descarte</td><td>${pc(A.m.desc)}</td><td>${pc(B.m.desc)}${dlt(A.m.desc,B.m.desc,true,true)}</td></tr>
+            <tr><td>Tallos por cama</td><td>${f(A.m.cama)}</td><td>${f(B.m.cama)}${dlt(A.m.cama,B.m.cama)}</td></tr>
+            <tr><td>Incidencia promedio</td><td>${pc(A.m.inc)}</td><td>${pc(B.m.inc)}${dlt(A.m.inc,B.m.inc,true,true)}</td></tr>
+            <tr><td>Abonadas</td><td>${A.m.ab}</td><td>${B.m.ab}</td></tr>
+            <tr><td>Fumigaciones</td><td>${A.m.fu}</td><td>${B.m.fu}</td></tr>
+          </tbody></table></div>`}
+      });
+    }
+    h+=`</div>`;
+    // Ranking de todos los ciclos cerrados
+    const rk=conDatos.slice().sort((a,b)=>b.m.U-a.m.U);const mxr=rk[0].m.U;
+    const gs=ordenGrados(Object.assign({},...rk.map(x=>x.m.tipos)));const gc={};gs.forEach((g,i)=>gc[g]=SERIES_COL[i%SERIES_COL.length]);
+    const showN=state.cy.all?rk.length:10;
+    h+=`<div class="panel dp-panel"><h2>Todos los ciclos cerrados</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Del que más tallos útiles dio al que menos, por grado.</p>
+      <div class="cy-key">${gs.map(g=>`<span><i style="background:${gc[g]}"></i>${esc(g)}</span>`).join("")}</div>
+      ${rk.slice(0,showN).map(x=>`<div class="rk"><span>${cl(x.c)}<small>${esc(x.c.variedad||"")}, cerró ${fmt(x.c.fin)}</small></span><span class="bar" style="display:flex">${gs.filter(g=>x.m.tipos[g]).map(g=>`<i title="${esc(g)} ${num(x.m.tipos[g])}" style="width:${x.m.tipos[g]/mxr*100}%;background:${gc[g]};border-radius:0"></i>`).join("")}</span><span class="v">${num(x.m.U)}</span></div>`).join("")}
+      ${rk.length>10?`<button class="more" id="cyAll">${state.cy.all?"Ver solo los 10 primeros":"Ver los "+rk.length+" ciclos"}</button>`:""}</div>`;
+  }
+  if(prox.length)h+=`<div class="panel dp-panel"><h2>Próximos a cerrar</h2><p class="hint" style="margin:2px 0 10px;color:var(--muted);font-size:13px">Lotes en las últimas semanas de su ciclo (el ciclo típico dura ~${tw} semanas).</p>
+    ${prox.slice(0,8).map(c=>{const m=cicloMetricas(c);return `<div class="rk"><span>${cl(c)}<small>semana ${c.weeks}</small></span><span class="bar"><i style="width:${Math.min(100,c.weeks/tw*100)}%;background:var(--leaf)"></i></span><span class="v">${m.U?num(m.U):"—"}<small>tallos útiles</small></span></div>`}).join("")}</div>`;
+  if(sinDatos.length)h+=`<p class="note" style="color:var(--onpage-muted);font-size:12.5px">Ciclos cerrados antes de registrar ingresos a sala, sin flor para comparar: ${sinDatos.map(x=>`${cl(x.c)} (cerró ${fmtS(x.c.fin)})`).join(", ")}.</p>`;
+  body.innerHTML=h;
+  body.querySelectorAll(".db").forEach(b=>b.onclick=()=>{state.cy.open=state.cy.open===b.dataset.l?null:b.dataset.l;renderCiclos()});
+  const ca=document.getElementById("cyAll");if(ca)ca.onclick=()=>{state.cy.all=!state.cy.all;renderCiclos()};
+}
+
 function setView(v){state.view=v;document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
-  document.getElementById("viewResumen").hidden=v!=="resumen";document.getElementById("viewSemanas").hidden=v!=="semanas";document.getElementById("viewDespachos").hidden=v!=="despachos";
+  document.getElementById("viewResumen").hidden=v!=="resumen";document.getElementById("viewSemanas").hidden=v!=="semanas";document.getElementById("viewDespachos").hidden=v!=="despachos";document.getElementById("viewCiclos").hidden=v!=="ciclos";
   try{const u=new URL(location.href);if(v!=="resumen")u.searchParams.set("vista",v);else u.searchParams.delete("vista");history.replaceState(null,"",u)}catch(e){}}
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 function controls(){
@@ -971,7 +1088,7 @@ async function init(){
       const u=RAW.actualizado?new Date(RAW.actualizado):new Date();DATA_AT=u.getDate()+" "+MES[u.getMonth()]+", "+u.toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"});}
     catch(e){if(!RAW){document.getElementById("global").innerHTML=`<h2>No se pudo cargar la información</h2><p class="sub" style="margin-top:8px">Revisa la conexión a internet y vuelve a abrir el tablero. Si el problema sigue, la hoja de cálculo o el enlace de Apps Script cambió (${esc(e.message)}).</p>`;return}}
   }
-  unificarFincas(RAW);M=build(RAW);controls();render();{const vq=new URLSearchParams(location.search).get("vista");setView(["semanas","despachos"].includes(vq)?vq:"resumen");}
+  unificarFincas(RAW);M=build(RAW);controls();render();{const vq=new URLSearchParams(location.search).get("vista");setView(["semanas","despachos","ciclos"].includes(vq)?vq:"resumen");}
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&SOURCE_URL&&Date.now()-loadedAt>10*60e3)location.reload()});
 }
