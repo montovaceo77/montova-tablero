@@ -208,6 +208,8 @@ h2{font:700 17px/1.2 var(--display);margin:0 0 4px;letter-spacing:-.01em}
 .cy-t th:first-child,.cy-t td:first-child{text-align:left;padding-left:0}
 .cy-t em{font-style:normal;font-size:12px;margin-left:6px}
 .cy-t tr.main td{border-top:0}
+.cy-t tr.sep td{border-top:2px solid var(--line)}
+.cy-t small.pp{color:var(--muted);font-size:11.5px;margin-left:5px}
 .cy-t .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
 .cy-top{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
 .cy-top .panel span{display:block;font-size:13px;color:var(--muted)}
@@ -1002,9 +1004,9 @@ state.cy={open:null,all:false};
 function cicloMetricas(c){
   const U=c.sala.reduce((s,r)=>s+r.util,0),X=c.sala.reduce((s,r)=>s+r.desc,0);
   const rates=c.monDates.map(d=>stats(c.mon.filter(m=>m.fecha===d)).rate).filter(x=>x!=null);
-  const tipos={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}});
+  const tipos={},mot={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}if(r.desc){const k=(r.motivo||"Sin motivo").trim();mot[k]=(mot[k]||0)+r.desc}});
   return {U,X,cama:c.camas?U/c.camas:null,planta:c.plantas?U/c.plantas:null,desc:U+X?X/(U+X):null,
-    inc:rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null,ab:c.abon.length,fu:c.fum.length,tipos};
+    inc:rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null,ab:c.abon.length,fu:c.fum.length,tipos,mot};
 }
 const GRADOS=["Mini","Fancy","Select","Premium","Jumbo"];
 const ordenGrados=o=>Object.keys(o).sort((a,b)=>{const i=GRADOS.indexOf(a),j=GRADOS.indexOf(b);return (i<0?99:i)-(j<0?99:j)||a.localeCompare(b)});
@@ -1042,20 +1044,24 @@ function renderCiclos(){
       <div class="cy-bars">${cols.map(c=>`<div class="cy-col${c.active?" cur":""}"><span class="tot">${num(c.m.U)}</span><div class="stk">${gs.slice().reverse().filter(g=>c.m.tipos[g]).map(g=>`<i title="${esc(g)} ${num(c.m.tipos[g])}" style="height:${c.m.tipos[g]/mx*100}%;background:${gc[g]}"></i>`).join("")}</div><span class="lb">${lab(c)}</span></div>`).join("")}</div>`;
     // tabla comparativa
     const f=(v,d=0)=>v==null?"—":num(+v.toFixed(d));const pc=v=>v==null?"—":pct(v);
-    const dlt=(x,y,inv,isP)=>{if(x==null||y==null||x===y)return "";if(!isP&&x===0)return `<em style="color:#BDEBD0">nuevo</em>`;if(!isP&&y===0)return `<em style="color:#FFB4B4">no hubo</em>`;const d=isP?Math.round((y-x)*100):Math.round((y-x)/(x||1)*100);if(!d)return "";const good=inv?y<x:y>x;return `<em style="color:${good?"#BDEBD0":"#FFB4B4"}">${d>0?"+":""}${d}${isP?" pts":"%"}</em>`};
+    const dlt=(x,y,inv,isP)=>{if(x==null||y==null||x===y)return "";if(!isP&&x===0)return `<em style="color:${inv?"#FFB4B4":"#BDEBD0"}">nuevo</em>`;if(!isP&&y===0)return `<em style="color:${inv?"#BDEBD0":"#FFB4B4"}">no hubo</em>`;const d=isP?Math.round((y-x)*100):Math.round((y-x)/(x||1)*100);if(!d)return "";const good=inv?y<x:y>x;return `<em style="color:${good?"#BDEBD0":"#FFB4B4"}">${d>0?"+":""}${d}${isP?" pts":"%"}</em>`};
     const row=(name,get,fm,opt={})=>`<tr${opt.cls?` class="${opt.cls}"`:""}><td>${name}</td>${cols.map((c,i)=>{const v=get(c);const p=i>0&&!c.active?get(cols[i-1]):null;return `<td>${fm(v)}${i>0&&!c.active&&opt.cmp!==false?dlt(p,v,opt.inv,opt.isP):""}</td>`}).join("")}</tr>`;
     h+=`<div class="scroll" style="margin-top:18px"><table class="cy-t"><thead><tr><th></th>${cols.map(c=>`<th>Ciclo ${c.nCiclo}${c.active?"<small>en curso</small>":""}</th>`).join("")}</tr></thead><tbody>
       ${row("<b>Tallos útiles</b>",c=>c.m.U,v=>`<b>${f(v)}</b>`,{cls:"main"})}
       ${gs.map(g=>row(`<span style="padding-left:10px"><i class="sw" style="background:${gc[g]}"></i>${esc(g)}</span>`,c=>c.m.tipos[g]||0,v=>f(v))).join("")}
-      ${row("Descarte",c=>c.m.desc,pc,{inv:true,isP:true})}
-      ${row("Semanas",c=>c.weeks,v=>f(v),{cmp:false})}
+      ${row("<b>Tallos descartados</b>",c=>c.m.X,v=>`<b>${f(v)}</b>`,{inv:true,cls:"sep"})}
+      ${row("% de lo cosechado",c=>c.m.desc,pc,{inv:true,isP:true})}
+      ${(()=>{const ms=Object.keys(Object.assign({},...cols.map(c=>c.m.mot))).sort((a,b)=>cols.reduce((s,c)=>s+(c.m.mot[b]||0),0)-cols.reduce((s,c)=>s+(c.m.mot[a]||0),0));
+        return ms.map(mo=>`<tr><td><span style="padding-left:10px">${esc(mo)}</span></td>${cols.map((c,i)=>{const v=c.m.mot[mo]||0;const pr=c.m.X?v/c.m.X:null;const prev=i>0&&!c.active?cols[i-1]:null;
+          return `<td>${f(v)}<small class="pp">${pr!=null&&v?pct(pr):""}</small>${prev?dlt(prev.m.mot[mo]||0,v,true):""}</td>`}).join("")}</tr>`).join("")})()}
+      ${row("Semanas",c=>c.weeks,v=>f(v),{cmp:false,cls:"sep"})}
       ${row("Camas",c=>c.camas,v=>f(v),{cmp:false})}
       ${row("Tallos por cama",c=>c.m.cama,v=>f(v))}
       ${row("Incidencia promedio",c=>c.m.inc,pc,{inv:true,isP:true})}
       ${row("Abonadas",c=>c.m.ab,v=>f(v),{cmp:false})}
       ${row("Fumigaciones",c=>c.m.fu,v=>f(v),{cmp:false})}
       </tbody></table></div>
-      <p class="note" style="font-size:12px">Cada cambio se compara con el ciclo anterior.${cur?" El ciclo en curso todavía está produciendo, así que no se compara.":""}</p></div>`;
+      <p class="note" style="font-size:12px">Cada cambio se compara con el ciclo anterior. El porcentaje junto a cada motivo es su parte del total descartado en ese ciclo.${cur?" El ciclo en curso todavía está produciendo, así que no se compara.":""}</p></div>`;
   }
   if(sinDatos.length)h+=`<p class="note" style="color:var(--onpage-muted);font-size:12.5px">Ciclos cerrados antes de registrar ingresos a sala, sin flor para comparar: ${sinDatos.map(c=>`${esc(c.lote)}, ciclo ${c.nCiclo} (cerró ${fmtS(c.fin)})`).join("; ")}.</p>`;
   body.innerHTML=h;
