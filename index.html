@@ -908,7 +908,7 @@ function renderDespachos(){
       <p class="hint" style="margin:2px 0 0;color:var(--muted);font-size:13px">${gl.length} despacho${gl.length===1?"":"s"}${state.dp.com?" de "+esc(state.dp.com):""}, del ${fmt(a)} al ${fmt(b)}.</p></div>
       <button class="dl-btn" id="dpXls">Descargar Excel</button></div>
     <button class="more" id="dpAll" aria-expanded="${state.dp.all}">${state.dp.all?"Ocultar la lista":"Ver la lista"}</button>
-    ${state.dp.all?`<div class="scroll" style="margin-top:8px"><table class="chg dl-t"><thead><tr><th>Fecha</th><th>Despacho</th><th>Comercializadora</th><th class="r">Tallos</th></tr></thead><tbody>
+    ${state.dp.all?`<div class="scroll" style="margin-top:8px"><table class="chg dl-t"><thead><tr><th>Fecha</th><th>Remisión</th><th>Comercializadora</th><th class="r">Tallos</th></tr></thead><tbody>
       ${gl.map((g,i)=>`<tr class="dl-r" data-i="${i}" tabindex="0" style="cursor:pointer"><td>${fmtS(g.fecha)}</td><td>${esc(g.num??"")}</td><td>${esc(g.com||"")}</td><td class="r"><b>${num(g.t)}</b></td></tr>
         <tr class="dl-d" data-d="${i}" hidden><td colspan="4">${Object.entries(g.items).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<span class="chip">${esc(k)} ${num(v)}</span>`).join("")}${g.lider?`<p class="nov" style="font-style:normal">Sala: ${esc(g.lider)}</p>`:""}${g.nov.size?`<p class="nov">${[...g.nov].map(esc).join(". ")}</p>`:""}</td></tr>`).join("")}
       </tbody></table></div><p class="note" style="font-size:12px">Toca un despacho para ver sus productos.</p>`:""}</div>`;
@@ -978,7 +978,7 @@ function balanceSala(a,b){
 function cargarXLSX(){return new Promise((ok,ko)=>{if(window.XLSX)return ok();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>ok();s.onerror=ko;document.head.appendChild(s)})}
 async function descargarDespachos(btn){
   const ex=state.dp.export;if(!ex||!ex.rows.length)return;
-  const det=ex.rows.map(r=>({"Fecha":r.fecha,"Despacho":(d=>/^\d+$/.test(d)?+d:d)(String(r.despacho||r.fito||"")),"Comercializadora":r.comercializadora||"","Finca":r.finca||"","Variedad":r.variedad||"","Tipo de flor":r.tipo||"","Nombre comercial":r.nc,"Cantidad":r.q,"Líder de sala":r.lider||"","Novedades":r.novedades||""}));
+  const det=ex.rows.map(r=>({"Fecha":r.fecha,"Remisión":(d=>/^\d+$/.test(d)?+d:d)(String(r.despacho||r.fito||"")),"Comercializadora":r.comercializadora||"","Finca":r.finca||"","Variedad":r.variedad||"","Tipo de flor":r.tipo||"","Nombre comercial":r.nc,"Cantidad":r.q,"Líder de sala":r.lider||"","Novedades":r.novedades||""}));
   const res={};ex.rows.forEach(r=>{const k=r.nc+"|"+(r.comercializadora||"");(res[k]??={"Nombre comercial":r.nc,"Comercializadora":r.comercializadora||"","Tallos":0});res[k].Tallos+=r.q});
   const resumen=Object.values(res).sort((x,y)=>x["Nombre comercial"]<y["Nombre comercial"]?-1:x["Nombre comercial"]>y["Nombre comercial"]?1:y.Tallos-x.Tallos);
   const name=`Despachos_${state.finca.replace(/\s+/g,"_")}${ex.com?"_"+ex.com.replace(/\s+/g,"_"):""}_${ex.a}_a_${ex.b}`;
