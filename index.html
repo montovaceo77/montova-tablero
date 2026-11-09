@@ -472,7 +472,9 @@ function build(raw){
     const dates=[...new Set(c.mon.map(m=>m.fecha))].sort();
     c.monDates=dates;
     c.lastMon=dates.at(-1)||null;
-    c.cur=c.lastMon?c.mon.filter(m=>m.fecha===c.lastMon):[];
+    c.curWeek=c.lastMon?wkKey(c.lastMon):null;
+    c.cur=c.curWeek?monWeek(c,c.curWeek):[];
+    c.curDates=[...new Set(c.mon.filter(m=>wkKey(m.fecha)===c.curWeek).map(m=>m.fecha))].sort();
     c.inc=stats(c.cur);
     c.abon.sort((a,b)=>a.fecha<b.fecha?-1:1);c.fum.sort((a,b)=>a.fecha<b.fecha?-1:1);
     const ref=c.fin||todayStr;c.weeks=Math.max(0,Math.floor(days(c.inicio,ref)/7));
@@ -507,11 +509,13 @@ function visible(){
 }
 
 /* Incidencia global de la semana: el último monitoreo de cada lote dentro de esa semana */
+/* Todos los monitoreos de un lote en una semana (p. ej. impares el lunes y pares el jueves).
+   Si una cama se revisó dos veces en la semana, cuenta su registro más reciente. */
+function monWeek(c,k){const by={};c.mon.filter(m=>wkKey(m.fecha)===k).forEach(m=>{if(!by[m.cama]||m.fecha>=by[m.cama].fecha)by[m.cama]=m});return Object.values(by)}
 function weekly(cs){
   const weeks={};
   cs.forEach(c=>{
-    const byW={};c.monDates.forEach(d=>{byW[wkKey(d)]=d});
-    Object.entries(byW).forEach(([w,d])=>{(weeks[w]??=[]).push(...c.mon.filter(m=>m.fecha===d).map(m=>({...m,cycle:c})))});
+    [...new Set(c.monDates.map(wkKey))].forEach(w=>{(weeks[w]??=[]).push(...monWeek(c,w).map(m=>({...m,cycle:c})))});
   });
   return Object.keys(weeks).sort().map(w=>({w,rows:weeks[w],s:stats(weeks[w]),lots:new Set(weeks[w].map(r=>r.cycle.id)).size}));
 }
@@ -537,7 +541,7 @@ function render(){
     const abW=cs.reduce((a,c)=>a+c.abon.filter(f=>wkKey(f.fecha)===cur.w).length,0);
     g.innerHTML=`<h2>Estado sanitario del cultivo, semana ${wk}</h2>
       <p class="headline"><b>${pct(s.rate)}</b> de los puntos inspeccionados tienen alguna plaga o enfermedad</p>
-      <p class="sub">${num(s.points)} puntos en ${num(s.beds?cur.rows.length:0)} camas de ${cur.lots} lotes.${trend}</p>
+      <p class="sub">${num(s.points)} puntos en ${num(cur.rows.length)} camas de ${cur.lots} ${cur.lots===1?"lote":"lotes"}${(()=>{const ls=[...new Set(cur.rows.map(r=>r.cycle))];const tc=ls.reduce((a,c)=>a+(c.camas||0),0);return tc?`, una muestra del ${pct(Math.min(1,cur.rows.length/tc))} de sus camas`:""})()}.${trend}</p>
       <div class="meter" role="img" aria-label="${pct(s.rate)} afectados"><i style="width:${s.rate*100}%;background:${c.bg}"></i></div>
       <div class="meter-legend"><span>Afectados ${num(s.bad)}</span><span>Sanos ${num(s.points-s.bad)}</span></div>
       <div class="facts">
@@ -626,7 +630,7 @@ function weeklySeries(cs){
   Object.entries(S).forEach(([k,v])=>{if(v.u+v.d){(out[k]??={pest:{}}).desc=v.d/(v.u+v.d);out[k].util=v.u;out[k].dT=v.d}});
   return out;
 }
-function lotWeek(c,k){const ds=c.monDates.filter(d=>wkKey(d)===k);if(!ds.length)return null;return stats(c.mon.filter(m=>m.fecha===ds.at(-1))).rate}
+function lotWeek(c,k){const r=monWeek(c,k);return r.length?stats(r).rate:null}
 
 function pair(S,f){const ks=Object.keys(S).filter(k=>S[k][f]!=null).sort();const c=ks.at(-1);if(!c)return {};const p=prevKey(c);return {c,p:S[p]&&S[p][f]!=null?p:null}}
 function computeAlerts(cs,S){
@@ -759,11 +763,12 @@ function openLot(id,from){
     const pests=Object.entries(s.pest).sort((a,b)=>b[1]-a[1]);
     const beds=c.cur.slice().sort((a,b)=>a.cama-b.cama);
     const sano=isDark()?"#4E9A74":"#7DBB98",bad=col(.95).bg;
-    const hist=c.monDates.length>1?`<p class="note">Historial: ${c.monDates.map(d=>{const st=stats(c.mon.filter(m=>m.fecha===d));return fmtS(d)+" "+pct(st.rate)}).join(", ")}</p>`:"";
-    monHTML=`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big">${pct(s.rate)}</span><span class="note" style="margin:0">de puntos afectados el ${fmt(c.lastMon)}</span></div>
+    const wks=[...new Set(c.monDates.map(wkKey))];
+    const hist=wks.length>1?`<p class="note">Historial por semana: ${wks.map(k=>`semana ${+k.split("-")[1]} ${pct(stats(monWeek(c,k)).rate)}`).join(", ")}</p>`:"";
+    monHTML=`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big">${pct(s.rate)}</span><span class="note" style="margin:0">de puntos afectados en la semana ${+c.curWeek.split("-")[1]} (${c.curDates.length>1?"monitoreos del "+c.curDates.map(fmtS).join(" y "):"monitoreo del "+fmt(c.lastMon)})</span></div>
       <div class="meter" style="margin:10px 0 12px"><i style="width:${s.rate*100}%;background:${col(s.rate).bg}"></i></div>
       ${pests.map(([k,v])=>`<span class="chip">${esc(k)} ${pct(v/s.points)}</span>`).join("")}
-      <p class="note">${s.beds} camas monitoreadas${c.camas?" de "+c.camas:""}, 3 puntos por cama.</p>
+      <p class="note">${s.beds} camas monitoreadas${c.camas?" de "+c.camas+" ("+pct(Math.min(1,s.beds/c.camas))+" del lote)":""}, 3 puntos por cama.</p>
       <div class="beds" aria-label="Mapa de camas">${beds.map(b=>`<button class="bed" data-d="${esc("Cama "+b.cama+": "+b.pts.map((p,i)=>"punto "+(i+1)+" "+(p.length?p.join(", "):"sano")).join("; "))}" title="Cama ${b.cama}: ${b.pts.map((p,i)=>"P"+(i+1)+" "+(p.length?p.join(", "):"sano")).join(" · ")}"><small>${b.cama}</small><span class="dots">${b.pts.map(p=>`<i style="background:${p.length?bad:sano}"></i>`).join("")}</span></button>`).join("")}</div>
       <div class="key"><span><i style="background:${sano}"></i>Punto sano</span><span><i style="background:${bad}"></i>Punto afectado</span></div><p class="note" id="bedInfo">Toca una cama para ver qué se encontró en cada punto.</p>${hist}`;
   }
@@ -1005,7 +1010,7 @@ document.querySelectorAll("#dpPreset button").forEach(x=>x.onclick=()=>{state.dp
 state.cy={open:null,all:false};
 function cicloMetricas(c){
   const U=c.sala.reduce((s,r)=>s+r.util,0),X=c.sala.reduce((s,r)=>s+r.desc,0);
-  const rates=c.monDates.map(d=>stats(c.mon.filter(m=>m.fecha===d)).rate).filter(x=>x!=null);
+  const rates=[...new Set(c.monDates.map(wkKey))].map(k=>stats(monWeek(c,k)).rate).filter(x=>x!=null);
   const tipos={},mot={};c.sala.forEach(r=>{if(r.util){const k=tipoStd(r.tipo);tipos[k]=(tipos[k]||0)+r.util}if(r.desc){let k=(r.motivo||"Sin motivo").trim();if(k.includes(","))k="Varios motivos (registros iniciales)";mot[k]=(mot[k]||0)+r.desc}});
   return {U,X,cama:c.camas?U/c.camas:null,planta:c.plantas?U/c.plantas:null,desc:U+X?X/(U+X):null,
     inc:rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null,ab:c.abon.length,fu:c.fum.length,tipos,mot};
